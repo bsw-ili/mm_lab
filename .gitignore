@@ -1,0 +1,11 @@
+# 忽略所有文件
+*
+
+# 例外：保留 .gitignore 自己
+!.gitignore
+
+# 只跟踪 C# 脚本
+!Assets/**/*.cs
+
+# 可选：如果你有 Editor 下的脚本，也保留
+!Assets/Editor/**/*.cs
