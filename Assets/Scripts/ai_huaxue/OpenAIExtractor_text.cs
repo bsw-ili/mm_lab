@@ -189,10 +189,6 @@ public class OpenAIExtractor_text : MonoBehaviour
 
         return "无操作文本";
     }
-
-
-
-   
 }
 
 // ✅ 内部数据结构定义

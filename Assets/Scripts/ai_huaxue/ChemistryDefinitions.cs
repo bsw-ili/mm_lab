@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 public static class ChemistryDefinitions
 {
@@ -342,7 +343,7 @@ public static class ChemistryDefinitions
             }
         },
         {
-            "rubber_stop_with_tube", new Dictionary<string, string>{
+            "rubber_stopper_with_tube", new Dictionary<string, string>{
                 {"unattached", "The rubber stopper with tube is not connected to any apparatus.（橡皮塞未与任何器材连接。）"},
                 {"inserted_in_test_tube", "The stopper is inserted into the test tube mouth, sealing it.（橡皮塞插入试管口并密封。）"},
                 {"connected_to_gas_tube", "The glass tube through the stopper is connected to a gas delivery tube.（穿过橡皮塞的玻璃管与导气管相连。）"},
@@ -534,13 +535,17 @@ public static class ChemistryDefinitions
             { "top_rim", "The center point of the beaker's upper rim (the highest point on the rim's circumference)" },
             { "side_surface", "The middle of the outer side of the beaker (usually facing the experimenter)" }
         }},
-        {
-            "rubber_stop_with_tube", new Dictionary<string, string>{
-                {"top_surface", "The flat top part of the rubber stopper, used for sealing the test tube opening.（橡皮塞的上平面，用于密封试管口。）"},
-                {"inserted_tube_end", "The end of the glass tube passing through the stopper, allowing gas to enter or exit.（穿过橡皮塞的玻璃管端，用于气体进出。）"},
-                {"side_surface", "The cylindrical side area that fits tightly inside the test tube mouth.（与试管口紧密配合的圆柱形侧面。）"}
-            }
-        },
+        { "rubber_stopper_with_tube", new Dictionary<string, string> {
+            // Rubber stopper 部分
+            { "stopper_top_center", "Center of the upper surface of the rubber stopper" },
+            { "stopper_bottom_center", "Center of the bottom of the rubber stopper (the end that inserts into the mouth of the test tube)" },
+            { "stopper_hole_center", "Center of the catheter hole on the rubber plug" },
+
+            // Delivery tube 部分
+            { "tube_end_b", "This is the port where the tubing exits or leads to another device (such as a gas collection bottle or solution container)" },
+            { "tube_bend_point", "This is the midpoint or corner where the delivery tube bends, often used to control direction or support positioning within the setup" }
+        }},
+
         {
             "porcelain_bowl", new Dictionary<string, string>{
                 {"inner_center", "Located at the central bottom of the bowl interior — used for placing or mixing samples.（位于瓷碗内底部中心，用于放置或混合样品。）"},
@@ -889,9 +894,12 @@ public static class ChemistryDefinitions
         },
 
         { "retort_stand", new Dictionary<string, string> {
-            { "base_center", "base plate center" },
-            { "rod_top", "rod top" },
-            { "rod_middle", "rod middle" }
+             { "base_center", "Located at the geometric center of the flat base plate of the retSyringeort stand, serving as the placement reference point.（位于铁架台底板的几何中心，用作放置参考点）" },
+             { "rod_middle", "Located at the middle section of the vertical metal rod, often used for clamping equipment such as burettes or test tubes.（位于竖直金属杆的中部，常用于夹持滴定管或试管等器材）" },
+             { "rod_top", "Located at the upper end of the vertical metal rod, typically the highest connection or fixing point.（位于金属竖杆的顶端，通常为最高连接或固定点）" },
+             { "fixing_end", "Located at the part of the clamp that attaches to the retort stand rod, serving as the connection anchor.（位于夹持器固定于铁架台立杆的一端，为连接锚点）" },
+             { "clamp_center", "Located at the middle joint of the clamp arms, representing the rotation or tightening point.（位于铁夹两臂中部的连接或旋转点，是调节夹紧度的位置）" },
+             { "clamping_end", "Located at the tips of the clamp arms, used to hold laboratory apparatus such as test tubes or flasks.（位于铁夹前端，用于夹持试管、烧瓶等器材）" }
         }},
         { "ground_glass_plate", new Dictionary<string, string> {
             { "top_center", "top surface center" },
@@ -1064,5 +1072,51 @@ public static class ChemistryDefinitions
             { "bottom_center", "Located at the geometric center of the bottle’s base, it marks the placement point on the lab bench or serves as a 3D spatial reference for positioning the apparatus." }
         }}
     };
+
+    public static readonly Dictionary<string, string> allowedLiquids_dict = new Dictionary<string, string> {
+    { "water", "#FFFFFF00" },                  // colorless
+    { "ethanol", "#FFFFFF00" },
+    { "hydrochloric_acid", "#FFFFFF00" },
+    { "sulfuric_acid", "#FFFFFF00" },
+    { "nitric_acid", "#FFFFFF00" },
+    { "ammonia_solution", "#FFFFFF00" },
+    { "sodium_hydroxide_solution", "#FFFFFF00" },
+    { "limewater", "#FFFFFF00" },
+    { "carbonic_acid_solution", "#FFFFFF00" },
+    { "silver_nitrate_solution", "#FFFFFF00" },
+    { "lead_nitrate_solution", "#FFFFFF00" },
+    { "copper_sulfate_solution", "#3399FF" },
+    { "iron_ii_sulfate_solution", "#99CC66" },
+    { "potassium_permanganate_solution", "#9933FF" },
+    { "cobalt_chloride_solution", "#3366FF" },
+    { "bromine_water", "#FFA500" },           // orange
+    { "iodine_solution", "#996633" },
+    { "phenolphthalein_solution", "#FFC0CB" }, // pink in alkali
+    { "ferric_chloride_solution", "#A52A2A" }, // yellow_brown
+    { "potassium_dichromate_solution", "#FFA500" } // orange
+};
+
+    public static readonly Dictionary<string, string> allowedSolids_dict = new Dictionary<string, string> {
+    { "sodium_chloride", "#FFFFFF" },         // white
+    { "sodium_carbonate", "#FFFFFF" },
+    { "sodium_bicarbonate", "#FFFFFF" },
+    { "sodium_hydroxide", "#FFFFFF" },
+    { "ammonium_chloride", "#FFFFFF" },
+    { "calcium_carbonate", "#FFFFFF" },
+    { "magnesium_shavings", "#C0C0C0" },      // silvery
+    { "zinc_granules", "#C0C0C0" },           // silvery
+    { "iron_powder", "#808080" },             // gray
+    { "copper_powder", "#B87333" },
+    { "sulfur", "#FFFF00" },                  // yellow
+    { "carbon_powder", "#000000" },           // black
+    { "copper_sulfate_crystals", "#3399FF" },
+    { "potassium_permanganate", "#9933FF" },
+    { "cobalt_chloride_crystals", "#3366FF" },
+    { "copper_oxide", "#000000" },           // black
+    { "iron_oxide", "#8B4513" },             // reddish_brown
+    { "lead_ii_oxide", "#FF4500" },          // orange_red
+    { "sulfur_powder", "#FFFF00" }           // yellow
+};
+
 
 }
