@@ -87,10 +87,9 @@ public class OpenAIExtractor_text : MonoBehaviour
                 操作物体 = new { type = "string", enum_ = allowedInstruments },
                 被操作物体 = new { type = "string", enum_ = allowedInstruments },
                 操作步骤 = new { type = "string" },
-                物体状态 = new { type = "string" },
                 操作后的画面 = new { type = "string" }
             },
-            required = new[] { "操作物体", "被操作物体", "操作步骤", "物体状态", "操作后的画面" }
+            required = new[] { "操作物体", "被操作物体", "操作步骤", "操作后的画面" }
         }, new JsonSerializerSettings
         {
             ContractResolver = new Newtonsoft.Json.Serialization.DefaultContractResolver
@@ -133,7 +132,8 @@ public class OpenAIExtractor_text : MonoBehaviour
         - 严格按照 schema 输出 JSON。
         - 操作物体和被操作物体必须来自 schema 中的枚举列表。
         - 操作步骤需详细，不得省略。
-        - 物体状态和操作后的画面需符合逻辑。
+        - 操作后的画面需符合逻辑。
+        - 操作后的画面需全面描述当前实验场景，包含物体中包含的液体，固体信息。
 
         #整体步骤信息：{premise}
         #当前步骤：{reply}

@@ -198,48 +198,69 @@ public class text2json : MonoBehaviour
         if (string.IsNullOrEmpty(opName) || string.IsNullOrEmpty(targetName))
         {
             Debug.LogError("JSON 中缺少 '操作物体' 或 '被操作物体' 字段");
-            return (null,null);
+            return (null, null);
         }
 
-        // 加载预制体（Resources）
+        // 加载预制体
         GameObject opPrefab = Resources.Load<GameObject>(opName);
         GameObject targetPrefab = Resources.Load<GameObject>(targetName);
-
         if (opPrefab == null || targetPrefab == null)
         {
             Debug.LogError($"无法在 Resources 找到预制体：{opName} 或 {targetName}");
             return (null, null);
         }
 
-        // 先尝试在场景中找到同名实例（注意：可能存在多个同名物体，这里只取第一个）
+        // 场景中查找
         GameObject opObj = GameObject.Find("SceneRoot/" + opPrefab.name);
         GameObject targetObj = GameObject.Find("SceneRoot/" + targetPrefab.name);
-
         bool opExisted = opObj != null;
         bool targetExisted = targetObj != null;
 
         float padding = 0.1f;
 
-        // 情况 1：target 不存在 -> 实例化在原点
+        // ============ 初始化 targetObj ============
         if (!targetExisted)
         {
             targetObj = Instantiate(targetPrefab, Vector3.zero, Quaternion.identity, parentTransform);
             targetObj.name = targetPrefab.name;
         }
+        else
+        {
+            // 若存在，重置其 transform（位置、旋转、缩放）
+            targetObj.transform.SetParent(parentTransform);
+            targetObj.transform.localPosition = Vector3.zero;
+            targetObj.transform.localRotation = Quaternion.identity;
+            targetObj.transform.localScale = Vector3.one;
+        }
 
-        // 情况 2：operator 不存在 -> 先实例化到暂定位置（我们会在后面根据包围盒移动）
+        // ============ 初始化 opObj ============
         if (!opExisted)
         {
-            // 暂时放在 target 的右侧一个初始偏移，避免瞬间重叠；后面会做精确调整
-            Vector3 tempPos = targetObj.transform.position + new Vector3((extractor_json.GetApproximateSize(opPrefab) + extractor_json.GetApproximateSize(targetPrefab)) + padding, 0f, 0f);
+            // 暂放右侧
+            Vector3 tempPos = targetObj.transform.position +
+                new Vector3((extractor_json.GetApproximateSize(opPrefab) + extractor_json.GetApproximateSize(targetPrefab)) + padding, 0f, 0f);
             opObj = Instantiate(opPrefab, tempPos, Quaternion.identity, parentTransform);
             opObj.name = opPrefab.name;
         }
-        // 到此：opObj, targetObj 都存在于场景中（可能是已有，也可能是刚实例化）
-        // 现在计算当前两个实例的包围盒并保证不重叠（仅移动 opObj 到 targetObj 右侧）
+        else
+        {
+            // 若存在，也重置 transform
+            opObj.transform.SetParent(parentTransform);
+            opObj.transform.localRotation = Quaternion.identity;
+            opObj.transform.localScale = Vector3.one;
+
+            // 将其移动到 target 右侧初始位置
+            Vector3 tempPos = targetObj.transform.position +
+                new Vector3((extractor_json.GetApproximateSize(opObj) + extractor_json.GetApproximateSize(targetObj)) + padding, 0f, 0f);
+            opObj.transform.localPosition = tempPos;
+        }
+
+        // ============ 确保不重叠 ============
         EnsureNoOverlap_MoveOperatorRight(opObj, targetObj, padding);
+
         return (opObj, targetObj);
     }
+
 
 
     // ✅ 单条对话处理
@@ -319,7 +340,7 @@ public class text2json : MonoBehaviour
             Dictionary<string, OpInfo> userOp = new();
             userOp[op] = op1;
             userOps.Add(userOp);
-            break;
+            //break;
         }
 
         return new DialogueItem

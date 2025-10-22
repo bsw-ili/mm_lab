@@ -109,7 +109,6 @@ public class OpenAIExtractor_json : MonoBehaviour
         }
     }
 
-    // 构造完整 schema
     private void BuildSchema(Dictionary<string, string> op1, Dictionary<string, string> op2)
     {
         JObject BuildVector3Schema() => new JObject(
@@ -130,7 +129,7 @@ public class OpenAIExtractor_json : MonoBehaviour
             return new JObject(
                 new JProperty("type", "object"),
                 new JProperty("properties", new JObject(
-                    new JProperty("equipment", new JObject(
+                    new JProperty("equipment_name", new JObject(
                         new JProperty("type", "string"),
                         new JProperty("enum", new JArray(op["object_name"]))
                     )),
@@ -139,89 +138,136 @@ public class OpenAIExtractor_json : MonoBehaviour
                         new JProperty("enum", SafeParseArray(op.ContainsKey("key_points") ? op["key_points"] : ""))
                     ))
                 )),
-                new JProperty("required", new JArray("equipment", "anchor"))
+                new JProperty("required", new JArray("equipment_name", "anchor"))
             );
         }
 
         JObject BuildEquipmentSchemaOnly(Dictionary<string, string> op) => new JObject(
             new JProperty("type", "object"),
             new JProperty("properties", new JObject(
-                new JProperty("equipment", new JObject(
+                new JProperty("equipment_name", new JObject(
                     new JProperty("type", "string"),
                     new JProperty("enum", new JArray(op["object_name"]))
                 ))
             )),
-            new JProperty("required", new JArray("equipment")),
+            new JProperty("required", new JArray("equipment_name")),
             new JProperty("additionalProperties", false)
         );
 
+        // 获取化学物质
         JArray allowedLiquids = new JArray(ChemistryDefinitions.allowedLiquids_dict.Keys);
         JArray allowedSolids = new JArray(ChemistryDefinitions.allowedSolids_dict.Keys);
 
+        // 定义所有原子动作
         var atomicActions = new JArray
-        {
-            // MoveToAnchor
-            new JObject(
-                new JProperty("type","object"),
-                new JProperty("properties", new JObject(
-                    new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("MoveToAnchor")))),
-                    new JProperty("source", BuildEquipmentSchema(op1)),
-                    new JProperty("target", BuildEquipmentSchema(op2)),
-                    new JProperty("offset", BuildVector3Schema())
-                )),
-                new JProperty("required", new JArray("op","source","target","offset"))
-            ),
-            // RotateAroundAnchor
-            new JObject(
-                new JProperty("type","object"),
-                new JProperty("properties", new JObject(
-                    new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("RotateAroundAnchor")))),
-                    new JProperty("source", BuildEquipmentSchema(op1)),
-                    new JProperty("rotation", BuildVector3Schema())
-                )),
-                new JProperty("required", new JArray("op","source","rotation"))
-            ),
-            // ScaleObject
-            new JObject(
-                new JProperty("type","object"),
-                new JProperty("properties", new JObject(
-                    new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("ScaleObject")))),
-                    new JProperty("source", BuildEquipmentSchemaOnly(op1)),
-                    new JProperty("scale", new JObject(new JProperty("type","number"), new JProperty("minimum",0.0)))
-                )),
-                new JProperty("required", new JArray("op","source","scale"))
-            ),
-            // Ignite
-            new JObject(
-                new JProperty("type","object"),
-                new JProperty("properties", new JObject(
-                    new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("Ignite")))),
-                    new JProperty("source", BuildEquipmentSchemaOnly(op1))
-                )),
-                new JProperty("required", new JArray("op","source"))
-            ),
-            // AddLiquid
-            new JObject(
-                new JProperty("type","object"),
-                new JProperty("properties", new JObject(
-                    new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("AddLiquid")))),
-                    new JProperty("source", BuildEquipmentSchemaOnly(op2)),
-                    new JProperty("material", new JObject(new JProperty("type","string"), new JProperty("enum", allowedLiquids)))
-                )),
-                new JProperty("required", new JArray("op","source","material"))
-            ),
-            // AddSolid
-            new JObject(
-                new JProperty("type","object"),
-                new JProperty("properties", new JObject(
-                    new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("AddSolid")))),
-                    new JProperty("source", BuildEquipmentSchemaOnly(op2)),
-                    new JProperty("material", new JObject(new JProperty("type","string"), new JProperty("enum", allowedSolids)))
-                )),
-                new JProperty("required", new JArray("op","source","material"))
-            )
-        };
+    {
+        
 
+        // ✅ Ignite
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("Ignite")))),
+                new JProperty("equipment", BuildEquipmentSchemaOnly(op1))
+            )),
+            new JProperty("required", new JArray("op","equipment"))
+        ),
+
+        // ✅ AddLiquid
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("AddLiquid")))),
+                new JProperty("equipment", BuildEquipmentSchemaOnly(op2)),
+                new JProperty("material", new JObject(
+                    new JProperty("type","string"),
+                    new JProperty("enum", allowedLiquids)
+                ))
+            )),
+            new JProperty("required", new JArray("op","equipment","material"))
+        ),
+
+        // ✅ AddSolid
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("AddSolid")))),
+                new JProperty("equipment", BuildEquipmentSchemaOnly(op2)),
+                new JProperty("material", new JObject(
+                    new JProperty("type","string"),
+                    new JProperty("enum", allowedSolids)
+                ))
+            )),
+            new JProperty("required", new JArray("op","equipment","material"))
+        ),
+
+        // ✅ ReverseObject
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("ReverseObject")))),
+                new JProperty("equipment", BuildEquipmentSchemaOnly(op1))
+            )),
+            new JProperty("required", new JArray("op","equipment"))
+        ),
+
+        // ✅ FillWithLiquid
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("FillWithLiquid")))),
+                new JProperty("equipment", BuildEquipmentSchemaOnly(op1)),
+                new JProperty("material", new JObject(
+                    new JProperty("type","string"),
+                    new JProperty("enum", allowedLiquids)
+                ))
+            )),
+            new JProperty("required", new JArray("op","equipment","material"))
+        ),
+
+        // ✅ LayFlat
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("LayFlat")))),
+                new JProperty("equipment", BuildEquipmentSchemaOnly(op1))
+            )),
+            new JProperty("required", new JArray("op","equipment"))
+        ),
+
+        // ✅ TiltUp
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("TiltUp")))),
+                new JProperty("equipment", BuildEquipmentSchemaOnly(op1))
+            )),
+            new JProperty("required", new JArray("op","equipment"))
+        ),
+
+        // ✅ TiltDown
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("TiltDown")))),
+                new JProperty("equipment", BuildEquipmentSchemaOnly(op1))
+            )),
+            new JProperty("required", new JArray("op","equipment"))
+        ),
+        // ✅ AlignByAnchor
+        new JObject(
+            new JProperty("type","object"),
+            new JProperty("properties", new JObject(
+                new JProperty("op", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("AlignByAnchor")))),
+                new JProperty("source", BuildEquipmentSchema(op1)),
+                new JProperty("target", BuildEquipmentSchema(op2)),
+                new JProperty("alignMode", new JObject(new JProperty("type","string"), new JProperty("enum", new JArray("AlignPosition","AlignPositionRotation"))))
+            )),
+            new JProperty("required", new JArray("op","source","target"))
+        )
+    };
+
+        // ✅ 组合顶层 schema
         schema = new JObject(
             new JProperty("type", "object"),
             new JProperty("properties", new JObject(
@@ -236,19 +282,52 @@ public class OpenAIExtractor_json : MonoBehaviour
         );
     }
 
+
     // 构造 prompt
     private string BuildPrompt(string userInput, Dictionary<string, string> op1, Dictionary<string, string> op2)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("你是一个虚拟化学实验物体摆放专家。 任务：根据输入的操作文本，生成符合 JSON Schema 的动作序列，目标是执行动作序列后实验场景中物体的摆放及状态符合操作后的画面。 请严格输出 JSON，不要包含任何多余文本或解释。 "); 
+        sb.AppendLine("你是一个虚拟化学实验物体摆放专家。 任务：根据输入文本中生成合适的动作序列，目标是执行动作序列后实验场景中物体的摆放及状态符合文本中的“操作后的画面”。 请严格输出 JSON，不要包含任何多余文本或解释。 "); 
         sb.AppendLine("## 已知信息说明 每个实验物体信息包含以下字段: 1. object_name: 物体名称 2. space_radius: 物体近似半径 (包围盒中心到对角线端点的距离) 3. key_points: 可用锚点列表 4. key_points_info: 锚点的详细描述 5. key_points_position: 锚点在世界坐标系中的位置 ");
         sb.AppendLine("## 操作物体信息:");
         sb.AppendLine(JsonConvert.SerializeObject(op1, Formatting.Indented));
         sb.AppendLine("## 被操作物体信息:");
         sb.AppendLine(JsonConvert.SerializeObject(op2, Formatting.Indented));
         sb.AppendLine("我们规定z轴朝向为物体的正前方（即物体的朝向，所以我们一般绕z轴旋转物体），y轴为物体正上方，x轴为物体正右方。");
-        sb.AppendLine(@" ## 动作定义 - AlignByAnchor：移动源物体，将其从当前锚点位置移动到目标物体锚点位置，并旋转源物体对齐法向量（即面对齐），字段: { source: {equipment, anchor}, target: {equipment, anchor}} - Ignite：点燃指定物体 字段: { source: {equipment} } - AddLiquid：为指定物体添加液体（若未指定，默认 material = ""default_liquid""） 字段: { source: {equipment}, material: ""liquid_name"" } - AddSolid：为指定物体添加固体（若未指定，默认 material = ""default_solid""） 字段: { source: {equipment}, material: ""solid_name"" }");
-        //sb.AppendLine(@" ## 输入与输出示例 ### 示例 1 **输入**：""把试管口对准烧杯口，然后倾斜倒入水"" **输出**： { ""steps"": [ { ""op"": ""MoveToAnchor"", ""source"": {""equipment"": ""test_tube"", ""anchor"": ""mouth""}, ""target"": {""equipment"": ""beaker"", ""anchor"": ""top_rim""}, ""offset"": [0, 0.05, 0] }, { ""op"": ""RotateAroundAnchor"", ""source"": {""equipment"": ""test_tube"", ""anchor"": ""mouth""}, ""rotation"": [45, 0, 0] }, { ""op"": ""AddLiquid"", ""source"": {""equipment"": ""beaker""}, ""material"": ""water"" } ] } ### 示例 2 **输入**：""将蜡烛点燃"" **输出**： { ""steps"": [ { ""op"": ""Ignite"", ""source"": {""equipment"": ""candle""} } ] } ### 示例 3 **输入**：""在烧杯中加入氯化钠固体"" **输出**： { ""steps"": [ { ""op"": ""AddSolid"", ""source"": {""equipment"": ""beaker""}, ""material"": ""sodium_chloride"" } ] } ### 示例 4 **输入**：""将试管缩小一半大小"" **输出**： { ""steps"": [ { ""op"": ""ScaleObject"", ""source"": {""equipment"": ""test_tube""}, ""scale"": 0.5 } ] } ");
+        sb.AppendLine(@" 
+        ## 原子动作定义 
+        
+        - ReverseObject: 将指定物体翻转180度,开口向下变为开口向上
+        字段: { equipment: {equipment_name} }
+
+        - FillWithLiquid: 将指定物体装满液体，
+        字段: { equipment: {equipment_name}, material: ""liquid_name"" }
+
+        - LayFlat：将指定物体水平放置，开口朝向x轴反方向
+        字段: { equipment: {equipment_name} }
+
+        - TiltUp：使物体向上倾斜，开口朝向y轴向x轴反方向45度角
+        字段: { equipment: {equipment_name} }
+        
+        - TiltDown：使物体向下倾斜，开口朝向y轴反方向与x轴反方向45度角
+        字段: { equipment: {equipment_name} }
+
+        - Ignite：点燃指定物体 
+        字段: { equipment: {equipment_name} } 
+        
+        - AddLiquid：为指定物体添加液体（若未指定，默认 material = ""default_liquid""） 
+        字段: { equipment: {equipment_name}, material: ""liquid_name"" } 
+        
+        - AddSolid：为指定物体添加固体（若未指定，默认 material = ""default_solid""） 
+        字段: { equipment: {equipment_name}, material: ""solid_name"" }
+
+        - AlignByAnchor：根据锚点对齐源物体和目标物体，我们可以仅对齐锚点的位置（AlignPosition），这种情况下不会改变源物体的方向，可用于实现加热，倾倒等操作；我们也可以对齐锚点的位置和法向量实现面对齐（AlignPositionRotation），会改变源物体的方向，可用于实现夹持，塞住，插入等操作。
+        字段: { source: {equipment_name, anchor}, target: {equipment_name, anchor},alignMode:{mode}}
+        ");
+        sb.AppendLine("我们规定执行AlignByAnchor前，若有试管物体，倾斜试管。");
+        sb.AppendLine("请你确保物体的所有状态变化都能覆盖到，如物体的倒放，倾斜等角度变化，包含液体，固体等状态信息。");
+        sb.AppendLine("我们规定执行AlignByAnchor后，不再执行其他原子操作（除非是Ignite操作），所以请你合理的安排原子操作顺序。");
+
         sb.AppendLine("## 用户输入:");
         sb.AppendLine(userInput);
         return sb.ToString();

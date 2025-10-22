@@ -527,30 +527,25 @@ public static class ChemistryDefinitions
             { "bottom_center", "The geometric center of the bottom of the beaker (the center point of the plane that touches the table or iron stand)" },
             { "inside_bottom", "The center point of the bottom of the beaker (where liquid settles or dissolved matter accumulates)" },
             { "top_rim", "The center point of the beaker's upper rim (the highest point on the rim's circumference)" },
-            { "side_surface", "The middle of the outer side of the beaker (usually facing the experimenter)" }
+            { "body_center", "The geometric center of the beaker" }
         }},
         { "large_beaker", new Dictionary<string, string> {
             { "bottom_center", "The geometric center of the bottom of the beaker (the center point of the plane that touches the table or iron stand)" },
             { "inside_bottom", "The center point of the bottom of the beaker (where liquid settles or dissolved matter accumulates)" },
             { "top_rim", "The center point of the beaker's upper rim (the highest point on the rim's circumference)" },
-            { "side_surface", "The middle of the outer side of the beaker (usually facing the experimenter)" }
+            { "body_center", "The geometric center of the beaker" }
         }},
         { "rubber_stopper_with_tube", new Dictionary<string, string> {
-            // Rubber stopper 部分
-            { "stopper_top_center", "Center of the upper surface of the rubber stopper" },
             { "stopper_bottom_center", "Center of the bottom of the rubber stopper (the end that inserts into the mouth of the test tube)" },
-            { "stopper_hole_center", "Center of the catheter hole on the rubber plug" },
-
-            // Delivery tube 部分
-            { "tube_end_b", "This is the port where the tubing exits or leads to another device (such as a gas collection bottle or solution container)" },
-            { "tube_bend_point", "This is the midpoint or corner where the delivery tube bends, often used to control direction or support positioning within the setup" }
+            { "tube_exit_port", "The open end of the delivery tube where gas or liquid exits or connects to another apparatus" },
+            { "tube_bend_joint", "The point where the delivery tube bends or curves, often used to guide or support the tube's direction in the setup" }
         }},
 
         {
             "porcelain_bowl", new Dictionary<string, string>{
                 {"inner_center", "Located at the central bottom of the bowl interior — used for placing or mixing samples.（位于瓷碗内底部中心，用于放置或混合样品。）"},
                 {"rim_edge", "Located at the top edge of the bowl — used for handling or pouring liquids.（位于瓷碗上缘，用于拿取或倒出液体。）"},
-                {"outer_surface", "Located along the outer wall — provides grip and support when handling.（位于瓷碗外壁，用于握持和支撑。）"}
+                { "bottom_center", "Located at the center of the bottom surface — supports placement and stability.（位于瓷碗底部中心，用于放置和保持稳定。）"}
             }
         },
         {
@@ -630,7 +625,7 @@ public static class ChemistryDefinitions
             "graphite_electrode",new Dictionary<string, string>{
                 {"tip_end","Located at the lower pointed or exposed end of the electrode — this is the part immersed in the electrolyte or solution for conducting electricity.（位于电极下端尖部或裸露部分，是浸入电解液或溶液中导电的部分。）" },
                 {"upper_end","Located at the opposite end of the electrode — usually connected to the power supply or clamping device.（位于电极的上端，用于连接电源或夹具固定。）" },
-                {"side_surface","Located along the cylindrical side of the electrode — represents the conductive carbon surface and contact region.（位于电极圆柱侧壁处，表示电极的导电碳表面及接触区域。）" }
+                {"body_center","Located along the cylindrical side of the electrode — represents the conductive carbon surface and contact region.（位于电极圆柱侧壁处，表示电极的导电碳表面及接触区域。）" }
             }
         },
         {
@@ -644,13 +639,13 @@ public static class ChemistryDefinitions
         { "test_tube", new Dictionary<string, string> {
             { "bottom_center", "The center of the bottom of the test tube (closest to the flame or hot plate)" },
             { "mouth", "Center point of test tube opening" },
-            { "side_surface", "Middle of the outer wall of the test tube" },
+            { "body_center", "Geometric center of the test tube" },
             { "inside_bottom", "Bottom center of the test tube" }
         }},
         { "small_test_tube", new Dictionary<string, string> {
             { "bottom_center", "The center of the bottom of the test tube (closest to the flame or hot plate)" },
             { "mouth", "Center point of test tube opening" },
-            { "side_surface", "Middle of the outer wall of the test tube" },
+            { "body_center", "Geometric center of the test tube" },
             { "inside_bottom", "Bottom center of the test tube" }
         }},
         { "test_tube_rack", new Dictionary<string, string> {
@@ -661,13 +656,14 @@ public static class ChemistryDefinitions
             { "bottom_center", "Located at the center of the flask base — used as the placement or heating point on the lab table or tripod." },
             { "neck_center", "Located at the middle of the neck — serves as a reference for attaching stoppers, thermometers, or connecting tubes." },
             { "mouth", "Located at the top opening of the neck — used for pouring liquids, inserting stoppers, or connecting other apparatus." },
-            { "side_surface", "Located on the slanted conical wall — represents the main body surface where the flask expands outward from the neck to the base." }
+            { "body_center", "Geometric center of the flask — the central point of the main body between neck and base." }
+
         }},
         { "volumetric_flask", new Dictionary<string, string> {
             { "bottom_center", "placement point" },
             { "neck_center", "narrow neck middle" },
             { "mouth", "opening" },
-            { "side_surface", "flask side wall" }
+            { "body_center", "Geometric center of the flask" }
         }},
         { "round-bottom_flask", new Dictionary<string, string> {
             { "bottom_center", "round bottom center" },
@@ -678,12 +674,13 @@ public static class ChemistryDefinitions
             { "bottom_center", "placement point" },
             { "inside_bottom", "liquid start point" },
             { "top_rim", "top rim" },
-            { "side_surface", "graduation surface" }
+            { "body_center", "Geometric center of the test tube" }
+
         }},
         { "burette", new Dictionary<string, string> {
             { "top_rim", "Located at the upper rim of the burette — used for adding liquid or connecting a funnel during filling." },
             { "tip", "Located at the lower narrow outlet — dispensing point where liquid drops out during titration." },
-            { "side_surface", "Located along the main cylindrical body — represents the visible measuring tube surface with scale markings." },
+            { "body_center", "Geometric center of the graduated cylinder" },
             { "attachment_point", "Located near the upper or middle section — used for clamping the burette to a stand with a burette holder." }
         }},
         {
@@ -698,7 +695,7 @@ public static class ChemistryDefinitions
         { "pipette", new Dictionary<string, string> {
             { "connection_point", "Located at the upper joint where the pipette connects to the pipet pump — ensures proper alignment and airtight sealing." },
             { "tip", "Located at the lower narrow outlet — dispensing end used for releasing liquid into another container." },
-            { "side_surface", "Located along the main cylindrical body — includes the graduated scale for measuring liquid volume." },
+            { "body_center", "Geometric center of the graduated cylinder" }
         }},
 
         { "watch_glass", new Dictionary<string, string> {
@@ -708,7 +705,7 @@ public static class ChemistryDefinitions
         { "wide-mouth_bottle", new Dictionary<string, string> {
             { "bottom_center", "placement point" },
             { "mouth", "wide opening" },
-            { "side_surface", "bottle body" }
+           { "body_center", "Geometric center of the bottle" }
         }},
         { "glass_rod", new Dictionary<string, string> {
             { "end_a", "Located at one end of the glass rod — can be used for stirring or guiding liquid flow." },
@@ -724,13 +721,13 @@ public static class ChemistryDefinitions
         { "crucible", new Dictionary<string, string> {
             { "bottom_center", "Located at the geometric center of the crucible base — used as the heating and placement point above the flame or clay triangle." },
             { "mouth_center", "Located at the center of the crucible mouth opening — represents the central point for adding or removing substances, and for placing or aligning the lid." },
-            { "side_surface", "Located on the outer curved wall — used as a contact surface when clamping with crucible tongs." }
+            { "body_center", "Geometric center of the crucible" }
         }},
 
         { "gas_jar", new Dictionary<string, string> {
             { "bottom_center", "The geometric center point of the bottom of the gas cylinder." },
             { "mouth", "The center point of the gas bottle mouth" },
-            { "side_surface", "The general position of the outer surface of the middle part of the gas bottle can be taken as a point in the normal direction of the model shell" }
+           { "body_center", "Geometric center of the gas bottle" }
         }},
         { "petri_dish", new Dictionary<string, string> {
             { "bottom_center", "culture base" },
@@ -740,18 +737,20 @@ public static class ChemistryDefinitions
             { "bottom_center", "placement point" },
             { "mouth", "opening" },
             { "neck_center", "neck middle" },
-            { "side_surface", "flask side wall" }
+            { "body_center", "Geometric center of the flask" }
         }},
         { "narrow-mouth_bottle", new Dictionary<string, string> {
             { "bottom_center", "placement point" },
             { "mouth", "narrow opening" },
-            { "side_surface", "bottle body" }
+            { "body_center", "Geometric center of the bottle" }
+
         }},
         { "alcohol_lamp", new Dictionary<string, string> {
             { "bottom_center", "Indicates the placement of the lamp body in contact with the table or stand." },
             { "flame_center", "It indicates the center of the flame burning and is the \"heating anchor point\" during heating experiments." },
             { "mouth", "It represents the outlet where fuel evaporates and flame is generated, and is the physical starting point of the flame." },
-            { "side_surface", "Represents the alcohol lamp housing area, used for interaction (such as gripping, picking) or collision detection." }
+            { "body_center", "Geometric center of the alcohol lamp" }
+
         }},
         { "bunsen_burner", new Dictionary<string, string> {
             { "base_center", "Located at the geometric center of the burner base — serves as the support and placement point on the lab bench." },
@@ -876,7 +875,7 @@ public static class ChemistryDefinitions
             "thermometer", new Dictionary<string, string> {
                 { "bulb_end", "Located at the mercury (or alcohol) bulb — represents the temperature sensing end that is immersed in the substance being measured." },
                 { "top_end", "Located at the opposite end of the thermometer — used for holding or reading the scale." },
-                { "side_surface", "Located along the cylindrical glass body — represents the outer glass tube surface containing the liquid column and scale markings." }
+                { "body_center", "Geometric center of the graduated cylinder" }
             }
         },
         {
@@ -911,7 +910,7 @@ public static class ChemistryDefinitions
                 { "top_rim", "Located at the upper opening — represents the mouth of the funnel used for adding or covering liquids." },
                 { "stopcock", "Located at the valve section — represents the control valve used to regulate liquid flow between the funnel and receiving vessel." },
                 { "tip", "Located at the bottom tip — represents the liquid outlet where separation or drainage occurs." },
-                { "side_surface", "Located along the curved glass wall — represents the funnel’s outer surface used for visualization or handling." }
+                { "body_center", "Geometric center of the funnel" }
             }
         },
 
@@ -941,7 +940,7 @@ public static class ChemistryDefinitions
         { "dropper", new Dictionary<string, string> {
             { "top_rim", "Located at the upper rubber bulb — used for squeezing to draw or release liquid." },
             { "tip", "Located at the narrow dispensing end — the point where liquid drops exit." },
-            { "side_surface", "Located along the glass or plastic tube body — represents the main cylindrical surface used for alignment or gripping." }
+            { "body_center", "Geometric center of the tube" }
         }},
         { "rubber_stopper", new Dictionary<string, string> {
             { "top_center", "Center of the upper surface of the rubber stopper" },
@@ -962,13 +961,13 @@ public static class ChemistryDefinitions
         { "dropper_bottle", new Dictionary<string, string> {
             { "bottom_center", "Located at the center of the bottle's base — serves as the placement or support point when the bottle stands upright on the table." },
             { "mouth", "Located at the opening of the bottle — used to insert or attach the dropper, or for sealing with a stopper." },
-            { "side_surface", "Located on the bottle's side surface — represents the area where liquid can be poured or dripped out when the bottle is tilted." }
+            { "body_center", "Geometric center of the bottle" }
         }},
         {
             "wash_bottle", new Dictionary<string, string> {
                 { "bottom_center", "Located at the center of the bottle base — represents the placement point providing stable support on the lab bench." },
                 { "nozzle_tip", "Located at the tip of the bent nozzle — represents the outlet where the liquid jet is directed for washing or rinsing." },
-                { "side_surface", "Located along the outer wall of the bottle — represents the main body used for holding the washing solution and for gripping during operation." }
+                { "body_center", "Geometric center of the bottle" }
             }
         },
 
@@ -998,8 +997,10 @@ public static class ChemistryDefinitions
         }},
         { "water_trough", new Dictionary<string, string> {
             { "bottom_center", "Located at the geometric center of the sink bottom (usually the lowest point where it touches the tabletop or stand)" },
-            { "rim", "Center point of the upper edge of the sink (center of the highest plane on the upper edge of the sink)" }
+            { "rim", "Center point of the upper edge of the sink (center of the highest plane on the upper edge of the sink)" },
+            { "inner_center", "Geometric center of the inner cavity of the water trough — useful for placing objects or measuring water level" },
         }},
+
         { "matchstick", new Dictionary<string, string> {
             { "tip", "Located at the ignition head — the chemical-coated end used for lighting." },
             { "handle", "Located along the wooden stick — the part held by hand or used to control burning direction." }
@@ -1020,10 +1021,11 @@ public static class ChemistryDefinitions
         }},
 
         { "delivery_tube", new Dictionary<string, string> {
-            { "end_a", "This is the port where the tubing connects to the first experimental device (such as a gas bottle, generator, or rubber stopper)." },
-            { "end_b", "This is the port where the tubing exits or leads to another device (such as a gas collection bottle, a gas guide bottle, or a cannula port leading to a solution)." },
-            { "bend_point", "This is the midpoint or corner where the delivery tube bends, often used to control direction or support positioning within the setup." }
-         }},
+            { "inlet_port", "Port where the tubing connects to the first experimental device (such as a gas bottle, generator, or rubber stopper)." },
+            { "outlet_port", "Port where the tubing exits or leads to another device (such as a gas collection bottle, a gas guide bottle, or a cannula port leading to a solution)." },
+            { "bend_center", "Midpoint or corner where the delivery tube bends — used to control direction or support positioning within the setup." }
+        }},
+
 
         { "clay_triangle", new Dictionary<string, string> {
             { "center", "support center" },
@@ -1040,7 +1042,7 @@ public static class ChemistryDefinitions
         { "bulb_desiccator", new Dictionary<string, string> {
             { "bottom_center", "Located at the geometric center of the desiccator base; this is where samples or desiccant containers are placed. It also serves as the support point when the desiccator sits on a lab bench." },
             { "top_rim", "Located along the upper circular edge of the desiccator body; this represents the contact surface between the main body and the lid, forming an airtight seal." },
-            { "side_surface", "Refers to the curved outer wall of the desiccator body; this area is often used for visualization, handling, or anchoring the model in simulations." }
+            { "body_center", "Geometric center of the desiccator" }
         }},
         { "condenser", new Dictionary<string, string> {
             { "inlet", "Located at the lower side joint — cooling water inlet through which cold water enters the condenser jacket." },

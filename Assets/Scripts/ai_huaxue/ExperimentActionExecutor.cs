@@ -2,268 +2,365 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Newtonsoft.Json.Linq;
-using LiquidVolumeFX; // 用于解析 JSON
-
+using LiquidVolumeFX;
+/// <summary>
+/// 🧪 实验动作执行器（优化版）
+/// 根据 JSON 动作序列执行虚拟实验操作
+/// </summary>
 public class ExperimentActionExecutor : MonoBehaviour
 {
-    // 动作函数定义
+    // ==============================
+    // 🧩 缓存区与路径定义
+    // ==============================
+    private const string LIQUID_PATH = "states/liquid";
+    private const string SOLID_PATH = "states/solid";
+    private Dictionary<string, GameObject> cache = new Dictionary<string, GameObject>();
+
+    // ==============================
+    // 🧠 基础操作函数
+    // ==============================
 
     /// <summary>
-    /// 缩放物体大小
+    /// 对齐物体锚点，并根据模式选择是否对齐法线方向。
+    /// 支持 AlignPosition / AlignPositionRotation 模式。
     /// </summary>
-    public void ScaleObject(GameObject obj, float scale)
-    {
-        if (obj == null) return;
-        obj.transform.localScale *= scale;
-    }
-
-    /// <summary>
-    /// 移动物体，使源物体的指定锚点与目标物体锚点对齐，并可添加偏移
-    /// </summary>
-    /// <summary>
-    /// 移动物体，使源物体的指定锚点与目标物体锚点对齐，并可添加偏移，同时面对齐
-    /// </summary>
-    public void MoveToAnchor(GameObject sourceObj, Transform sourceAnchor, GameObject targetObj, Transform targetAnchor, Vector3 offset)
+    public void AlignByAnchor(GameObject sourceObj, Transform sourceAnchor, GameObject targetObj, Transform targetAnchor, string alignMode)
     {
         if (sourceObj == null || sourceAnchor == null || targetObj == null || targetAnchor == null) return;
 
-        // 特殊处理酒精灯盖火焰
+        // 特殊逻辑：盖上酒精灯 → 关闭火焰
         if (sourceObj.name == "alcohol_lamp_cap" && targetObj.name == "alcohol_lamp")
         {
-            GameObject fire = sourceObj.transform.Find("Fire")?.gameObject;
+            GameObject fire = targetObj.transform.Find("Fire")?.gameObject;
             if (fire != null) fire.SetActive(false);
         }
 
-        // 1️⃣ 计算位置偏移，使锚点重合
-        Vector3 desiredPosition = targetAnchor.position + offset;
-        Vector3 anchorToObject = sourceObj.transform.position - sourceAnchor.position;
-        sourceObj.transform.position = desiredPosition + anchorToObject;
+        // 默认模式
+        if (string.IsNullOrEmpty(alignMode)) alignMode = "AlignPositionRotation";
+        string mode = alignMode.Trim().ToLowerInvariant();
 
-        // 2️⃣ 旋转对齐：源锚点法向量 -> 目标锚点法向量
-        Vector3 sourceNormal = sourceAnchor.up;   // 源锚点法向量
-        Vector3 targetNormal = targetAnchor.up;   // 目标锚点法向量
+        // -----------------------------
+        // 1️⃣ 将 sourceAnchor 的世界位置/方向转换为 sourceObj 局部坐标
+        // -----------------------------
+        Vector3 anchorLocalPos = sourceObj.transform.InverseTransformPoint(sourceAnchor.position);
+        Vector3 anchorLocalUp = sourceObj.transform.InverseTransformDirection(sourceAnchor.up);
 
-        // 计算旋转，让源锚点法向量对齐目标锚点法向量
-        Quaternion rotationOffset = Quaternion.FromToRotation(sourceNormal, targetNormal);
+        // 目标锚点世界信息
+        Vector3 targetWorldPos = targetAnchor.position;
+        Vector3 targetWorldUp = targetAnchor.up;
 
-        // 应用旋转到整个物体，同时保持锚点位置不变
-        sourceObj.transform.rotation = rotationOffset * sourceObj.transform.rotation;
+        // -----------------------------
+        // 2️⃣ 仅对齐位置
+        // -----------------------------
+        if (mode == "alignposition")
+        {
+            Vector3 currentAnchorWorld = sourceObj.transform.TransformPoint(anchorLocalPos);
+            Vector3 delta = targetWorldPos - currentAnchorWorld;
+            sourceObj.transform.position += delta;
+            return;
+        }
 
-        // 重新调整位置，确保锚点重合
-        sourceObj.transform.position = desiredPosition + (sourceObj.transform.position - sourceAnchor.position);
+        // -----------------------------
+        // 3️⃣ 对齐旋转 + 位置
+        // -----------------------------
+        if (mode == "alignpositionrotation")
+        {
+            // 计算当前锚点朝向（局部方向转世界方向）
+            Vector3 currentUpWorld = sourceObj.transform.TransformDirection(anchorLocalUp);
+
+            // 旋转使 sourceAnchor.up 对齐 targetAnchor.up
+            Quaternion rot = Quaternion.FromToRotation(currentUpWorld, targetWorldUp);
+            sourceObj.transform.rotation = rot * sourceObj.transform.rotation;
+
+            // 旋转后重新计算锚点世界位置
+            Vector3 anchorWorldAfterRotate = sourceObj.transform.TransformPoint(anchorLocalPos);
+
+            // 平移使锚点重合
+            Vector3 translation = targetWorldPos - anchorWorldAfterRotate;
+            sourceObj.transform.position += translation;
+            return;
+        }
+
+        Debug.LogWarning($"⚠️ 未识别的对齐模式: {alignMode}");
     }
 
 
-
     /// <summary>
-    /// 围绕自身锚点旋转
+    /// 点燃物体（激活火焰）
     /// </summary>
-    public void RotateAroundAnchor(GameObject sourceObj, Transform sourceAnchor, Vector3 rotation)
+    public IEnumerator Ignite(GameObject obj)
     {
-        if (sourceObj == null || sourceAnchor == null) return;
+        if (obj == null) yield break;
 
-        // 以锚点为中心旋转
-        sourceObj.transform.RotateAround(sourceAnchor.position, Vector3.right, rotation.x);
-        sourceObj.transform.RotateAround(sourceAnchor.position, Vector3.up, rotation.y);
-        sourceObj.transform.RotateAround(sourceAnchor.position, Vector3.forward, rotation.z);
+        GameObject fire = obj.transform.Find("Fire")?.gameObject;
+        if (fire == null)
+        {
+            Debug.LogWarning($"对象 {obj.name} 下未找到 Fire 对象");
+            yield break;
+        }
+
+        fire.GetComponent<ParticleSystem>().Play();
+
+        // 4️⃣ 等待粒子系统状态刷新（重要：确保 Transform + 粒子同步）
+        yield return new WaitForEndOfFrame();
+
+        // 5️⃣ 可选：再等待 1 帧确保完全显示（防止偶尔闪烁或锚点更新延迟）
+        yield return null;
     }
 
+
     /// <summary>
-    /// 点燃物体（示例：激活 ParticleSystem 或火焰对象）
+    /// 翻转物体（ReverseObject）
     /// </summary>
-    public void Ignite(GameObject obj)
+    public void ReverseObject(GameObject obj)
     {
         if (obj == null) return;
-        // 假设物体下有 ParticleSystem 表示火焰
-        GameObject fire = obj.transform.Find("Fire")?.gameObject;
-        if (fire != null) fire.SetActive(true);
+        obj.transform.Rotate(Vector3.right, 180f, Space.Self);
     }
 
     /// <summary>
-    /// 添加液体（示例：改变材质或激活液体对象）
+    /// 平放（LayFlat）
+    /// </summary>
+    public void LayFlat(GameObject obj)
+    {
+        if (obj == null) return;
+        obj.transform.rotation = Quaternion.Euler(0, 180f, 90f);
+    }
+
+    /// <summary>
+    /// 向上倾斜（TiltUp）
+    /// </summary>
+    public void TiltUp(GameObject obj)
+    {
+        if (obj == null) return;
+        obj.transform.rotation = Quaternion.Euler(45f, 180f, 0f);
+    }
+
+    /// <summary>
+    /// 向下倾斜（TiltDown）
+    /// </summary>
+    public void TiltDown(GameObject obj)
+    {
+        if (obj == null) return;
+        obj.transform.rotation = Quaternion.Euler(-45f, 180f, 0f);
+    }
+
+    /// <summary>
+    /// 添加液体（强制刷新 LiquidVolumeFX 显示）
     /// </summary>
     public void AddLiquid(GameObject obj, string liquidName)
     {
         if (obj == null) return;
 
-        Debug.Log($"Add liquid {liquidName} to {obj.name}");
+        // 获取颜色定义
+        if (!ChemistryDefinitions.allowedLiquids_dict.TryGetValue(liquidName, out string colorHex))
+        {
+            Debug.LogWarning($"液体 {liquidName} 未定义，使用默认颜色白色");
+            colorHex = "#FFFFFF";
+        }
 
-        // 从字典获取十六进制颜色
-        if (ChemistryDefinitions.allowedLiquids_dict.TryGetValue(liquidName, out string colorHex))
+        if (!ColorUtility.TryParseHtmlString(colorHex, out Color liquidColor))
+            liquidColor = Color.white;
+
+        // 找到 LiquidVolume 组件
+        Transform liquidObj = obj.transform.Find(LIQUID_PATH);
+        if (liquidObj == null)
         {
-            // 尝试解析十六进制颜色
-            if (ColorUtility.TryParseHtmlString(colorHex, out Color liquidColor))
-            {   
-                if(obj.transform.Find("states/liquid") == null) 
-                {
-                    Debug.LogWarning($"对象 {obj.name} 下未找到 states/liquid 子对象，无法设置液体颜色");
-                    return;
-                }
-                LiquidVolume liquid = obj.transform.Find("states/liquid").GetComponent<LiquidVolume>();
-                if (liquid != null)
-                {
-                    liquid.level = 1;
-                    liquid.liquidColor1 = liquidColor;
-                    liquid.liquidColor2 = liquidColor;
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"无法解析颜色: {colorHex}, 使用默认颜色白色");
-                if (obj.transform.Find("states/liquid") == null)
-                {
-                    Debug.LogWarning($"对象 {obj.name} 下未找到 states/liquid 子对象，无法设置液体颜色");
-                    return;
-                }
-                LiquidVolume liquid = obj.transform.GetComponent<LiquidVolume>();
-                if (liquid != null)
-                {
-                    liquid.level = 1;
-                    liquid.liquidColor1 = Color.white;
-                    liquid.liquidColor2 = Color.white;
-                }
-            }
+            Debug.LogWarning($"对象 {obj.name} 下未找到 {LIQUID_PATH}");
+            return;
         }
-        else
+
+        LiquidVolume liquid = liquidObj.GetComponent<LiquidVolume>();
+        if (liquid == null)
         {
-            Debug.LogWarning($"液体 {liquidName} 未在字典中定义, 使用默认颜色白色");
-            if (obj.transform.Find("states/liquid") == null)
-            {
-                Debug.LogWarning($"对象 {obj.name} 下未找到 states/liquid 子对象，无法设置液体颜色");
-                return;
-            }
-            LiquidVolume liquid = obj.transform.GetComponent<LiquidVolume>();
-            if (liquid != null)
-            {
-                liquid.level = 1;
-                liquid.liquidColor1 = Color.white;
-                liquid.liquidColor2 = Color.white;
-            }
+            Debug.LogWarning($"未在 {liquidObj.name} 上找到 LiquidVolume 组件");
+            return;
         }
+
+        // === 修改属性 ===
+        liquid.enabled = false;  // 🔄 防止未初始化状态影响
+        liquid.enabled = true;   // 强制重新初始化（等价于重新挂载组件）
+
+        liquid.level = 1.0f;
+        liquid.liquidColor1 = liquidColor;
+        liquid.liquidColor2 = liquidColor;
+        liquid.alpha = 1.0f;
+        liquid.murkiness = 0.0f;
+
+        // === 关键刷新步骤 ===
+        liquid.RefreshMaterialProperties();  // ✅ 刷新所有材质参数
+        liquid.UpdateMaterialProperties();   // ✅ 最后同步到GPU
     }
 
     /// <summary>
-    /// 添加固体（示例：激活固体模型）
+    /// 填充液体（等价于 AddLiquid + 满液位）
+    /// </summary>
+    public void FillWithLiquid(GameObject obj, string liquidName)
+    {
+        AddLiquid(obj, liquidName);
+    }
+
+    /// <summary>
+    /// 添加固体
     /// </summary>
     public void AddSolid(GameObject obj, string solidName)
     {
         if (obj == null) return;
-        Debug.Log($"Add solid {solidName} to {obj.name}");
-        // 可实现显示固体的逻辑
-        // 从字典获取十六进制颜色
-        if (ChemistryDefinitions.allowedSolids_dict.TryGetValue(solidName, out string colorHex))
+
+        if (!ChemistryDefinitions.allowedSolids_dict.TryGetValue(solidName, out string colorHex))
         {
-            // 尝试解析十六进制颜色
-            if (ColorUtility.TryParseHtmlString(colorHex, out Color solidColor))
-            {
-                Transform solid = obj.transform.Find("states/solid");
-                if (solid != null)
-                {
-                    solid.gameObject.SetActive(true);
-                    Renderer renderer = solid.GetComponent<Renderer>();
-                    if (renderer != null)
-                    {
-                        renderer.material.color = solidColor;
-                    }
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"液体 {solidName} 未在字典中定义, 使用默认颜色黑色");
-                Transform solid = obj.transform.Find("states/solid");
-                if (solid != null)
-                {
-                    solid.gameObject.SetActive(true);
-                    Renderer renderer = solid.GetComponent<Renderer>();
-                    if (renderer != null)
-                    {
-                        renderer.material.color = Color.black;
-                    }
-                }
-            }
+            Debug.LogWarning($"固体 {solidName} 未定义，使用默认颜色黑色");
+            colorHex = "#000000";
         }
-        else
+
+        if (!ColorUtility.TryParseHtmlString(colorHex, out Color solidColor))
+            solidColor = Color.black;
+
+        Transform solidObj = obj.transform.Find(SOLID_PATH);
+        if (solidObj == null)
         {
-            Debug.LogWarning($"液体 {solidName} 未在字典中定义, 使用默认颜色黑色");
-            Transform solid = obj.transform.Find("states/solid");
-            if (solid != null)
+            Debug.LogWarning($"对象 {obj.name} 下未找到 {SOLID_PATH}");
+            return;
+        }
+
+        solidObj.gameObject.SetActive(true);
+        Renderer renderer = solidObj.GetComponent<Renderer>();
+        if (renderer != null) renderer.material.color = solidColor;
+    }
+
+    // ==============================
+    // ⚙️ JSON 动作执行部分
+    // ==============================
+
+    /// <summary>
+    /// 主执行入口：解析并依次执行步骤
+    /// </summary>
+    public void ExecuteSteps(string jsonText)
+    {
+        if (string.IsNullOrEmpty(jsonText))
+        {
+            Debug.LogError("JSON 文本为空！");
+            return;
+        }
+
+        JObject json;
+        try
+        {
+            json = JObject.Parse(jsonText);
+        }
+        catch
+        {
+            Debug.LogError("JSON 解析失败！");
+            return;
+        }
+
+        JArray steps = json["steps"] as JArray;
+        if (steps == null)
+        {
+            Debug.LogError("未找到 steps 数组！");
+            return;
+        }
+
+        foreach (var step in steps)
+        {
+            string op = step["op"]?.ToString();
+            if (string.IsNullOrEmpty(op)) continue;
+
+            switch (op)
             {
-                solid.gameObject.SetActive(true);
-                Renderer renderer = solid.GetComponent<Renderer>();
-                if (renderer != null)
-                {
-                    renderer.material.color = Color.black;
-                }
+                case "AlignByAnchor":
+                    {
+                        var src = step["source"];
+                        var tgt = step["target"];
+                        string alignMode = step["alignMode"]?.ToString() ?? "AlignPositionRotation";
+
+                        GameObject srcObj = FindOrCache(src?["equipment_name"]?.ToString());
+                        GameObject tgtObj = FindOrCache(tgt?["equipment_name"]?.ToString());
+
+                        Transform srcAnchor = srcObj?.transform.Find("Anchors/" + src?["anchor"]);
+                        Transform tgtAnchor = tgtObj?.transform.Find("Anchors/" + tgt?["anchor"]);
+
+                        AlignByAnchor(srcObj, srcAnchor, tgtObj, tgtAnchor, alignMode);
+                    }
+                    break;
+
+                case "Ignite":
+                    {
+                        GameObject obj = FindOrCache(step["equipment"]?["equipment_name"]?.ToString());
+                        StartCoroutine(Ignite(obj));
+                    }
+                    break;
+
+                case "AddLiquid":
+                    {
+                        GameObject obj = FindOrCache(step["equipment"]?["equipment_name"]?.ToString());
+                        string mat = step["material"]?.ToString();
+                        AddLiquid(obj, mat);
+                    }
+                    break;
+
+                case "AddSolid":
+                    {
+                        GameObject obj = FindOrCache(step["equipment"]?["equipment_name"]?.ToString());
+                        string mat = step["material"]?.ToString();
+                        AddSolid(obj, mat);
+                    }
+                    break;
+
+                case "FillWithLiquid":
+                    {
+                        GameObject obj = FindOrCache(step["equipment"]?["equipment_name"]?.ToString());
+                        string mat = step["material"]?.ToString();
+                        FillWithLiquid(obj, mat);
+                    }
+                    break;
+
+                case "ReverseObject":
+                    {
+                        GameObject obj = FindOrCache(step["equipment"]?["equipment_name"]?.ToString());
+                        ReverseObject(obj);
+                    }
+                    break;
+
+                case "LayFlat":
+                    {
+                        GameObject obj = FindOrCache(step["equipment"]?["equipment_name"]?.ToString());
+                        LayFlat(obj);
+                    }
+                    break;
+
+                case "TiltUp":
+                    {
+                        GameObject obj = FindOrCache(step["equipment"]?["equipment_name"]?.ToString());
+                        TiltUp(obj);
+                    }
+                    break;
+
+                case "TiltDown":
+                    {
+                        GameObject obj = FindOrCache(step["equipment"]?["equipment_name"]?.ToString());
+                        TiltDown(obj);
+                    }
+                    break;
+
+                default:
+                    Debug.LogWarning($"⚠️ 未识别操作类型: {op}");
+                    break;
             }
         }
     }
 
-    /// <summary>
-    /// 执行动作列表
-    /// </summary>
-    public void ExecuteSteps(string jsonText)
+    // ==============================
+    // 🔍 辅助函数：对象解析缓存
+    // ==============================
+    private GameObject FindOrCache(string name)
     {
-        JObject json = JObject.Parse(jsonText);
-        JArray steps = (JArray)json["steps"];
-        foreach (var step in steps)
-        {
-            string op = step["op"].ToString();
-            JObject source = (JObject)step["source"];
-            JObject target = step["target"] as JObject;
-            GameObject sourceObj = GameObject.Find(source["equipment"].ToString());
-            Transform sourceAnchor = sourceObj != null && source["anchor"] != null ? sourceObj.transform.Find("Anchors/" + source["anchor"].ToString()) : sourceObj?.transform;
+        if (string.IsNullOrEmpty(name)) return null;
+        if (cache.TryGetValue(name, out var obj)) return obj;
 
-            switch (op)
-            {
-                case "ScaleObject":
-                    float scale = step["scale"].ToObject<float>();
-                    ScaleObject(sourceObj, scale);
-                    break;
-
-                case "MoveToAnchor":
-                    GameObject targetObj = GameObject.Find(target["equipment"].ToString());
-                    Transform targetAnchor = targetObj != null && target["anchor"] != null ? targetObj.transform.Find("Anchors/"+target["anchor"].ToString()) : targetObj?.transform;
-                    JToken offsetToken = step["offset"];
-                    Vector3 offset = Vector3.zero;
-
-                    if (offsetToken != null && offsetToken.Type == JTokenType.Array)
-                    {
-                        float x = offsetToken[0].ToObject<float>();
-                        float y = offsetToken[1].ToObject<float>();
-                        float z = offsetToken[2].ToObject<float>();
-                        offset = new Vector3(x, y, z);
-                    }
-                    MoveToAnchor(sourceObj, sourceAnchor, targetObj, targetAnchor, offset);
-                    break;
-
-                case "RotateAroundAnchor":
-                    JToken rotationToken = step["rotation"];
-
-                    Vector3 rotation = Vector3.zero;
-                    if (rotationToken != null && rotationToken.Type == JTokenType.Array)
-                    {
-                        float x = rotationToken[0].ToObject<float>();
-                        float y = rotationToken[1].ToObject<float>();
-                        float z = rotationToken[2].ToObject<float>();
-                        rotation = new Vector3(x, y, z);
-                    }
-                    RotateAroundAnchor(sourceObj, sourceAnchor, rotation);
-                    break;
-
-                case "Ignite":
-                    Ignite(sourceObj);
-                    break;
-
-                case "AddLiquid":
-                    string liquid = step["material"] != null ? step["material"].ToString() : "default_liquid";
-                    AddLiquid(sourceObj, liquid);
-                    break;
-
-                case "AddSolid":
-                    string solid = step["material"] != null ? step["material"].ToString() : "default_solid";
-                    AddSolid(sourceObj, solid);
-                    break;
-            }
-        }
+        obj = GameObject.Find(name);
+        if (obj != null) cache[name] = obj;
+        else Debug.LogWarning($"❗ 未找到对象: {name}");
+        return obj;
     }
 }
