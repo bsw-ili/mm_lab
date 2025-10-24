@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Unity.VisualScripting;
 
 public class DialogueItem
 {
@@ -53,7 +54,6 @@ public class text2json : MonoBehaviour
     public MultiAngleScreenshot mfs;
     public ExperimentActionExecutor actionExecutor;
 
-    private int count = 0;
     private readonly Regex operationRegex = new Regex(@"-\s*(.+)");
     private string outputDir;
     public Transform parentTransform;
@@ -65,9 +65,17 @@ public class text2json : MonoBehaviour
 
         if (!Directory.Exists(outputDir))
             Directory.CreateDirectory(outputDir); // ✅ 自动创建输出目录
+        string folderPath = @"D:\postgraduate\多模态大模型_化学实验\output\json_results"; // 文件夹路径
 
-        string text_path = "D:\\postgraduate\\多模态大模型_化学实验\\data\\json\\chem_experiments.json";
-        await ProcessJsonFileAsync(text_path);
+        // 获取文件夹下的所有文件路径
+        string[] files = Directory.GetFiles(folderPath);
+
+        foreach (var file in files)
+        {
+            await ProcessJsonFileAsync(file);
+            //break; // 只处理第一个文件进行测试
+        }
+        
     }
 
     private async Task<string> SafeExtract(Func<Task<string>> func)
@@ -84,6 +92,27 @@ public class text2json : MonoBehaviour
     public Task<string> GetJson(string reply, (GameObject opObj, GameObject targetObj) op_objects) => SafeExtract(() => extractor_json.Extract(reply, op_objects));
     public Task<string> GetText(string reply, string premise) => SafeExtract(() => extractor_text.Extract(reply, premise));
 
+    /// <summary>
+    /// 清空 SceneRoot 下的所有子物体（但保留 SceneRoot 本身）
+    /// </summary>
+    public void ClearSceneRoot()
+    {
+        if (parentTransform == null)
+        {
+            Debug.LogWarning("SceneRoot 未指定！");
+            return;
+        }
+
+        // 用逆序遍历防止子物体销毁时索引变化
+        for (int i = parentTransform.transform.childCount - 1; i >= 0; i--)
+        {
+            Transform child = parentTransform.transform.GetChild(i);
+            Destroy(child.gameObject);
+        }
+
+        Debug.Log("✅ SceneRoot 已清空");
+    }
+
     // ✅ 主处理流程
     private async Task ProcessJsonFileAsync(string textPath)
     {
@@ -94,40 +123,37 @@ public class text2json : MonoBehaviour
         }
 
         string jsonContent = await File.ReadAllTextAsync(textPath);
-        var data = JsonConvert.DeserializeObject<Dictionary<string, ChemTrain>>(jsonContent);
+        var data = JsonConvert.DeserializeObject<ChemTrain>(jsonContent);
         if (data == null)
         {
             Debug.LogError("❌ JSON反序列化失败。");
             return;
         }
 
-        foreach (var kvp in data)
-        {
-            ChemTrain train = kvp.Value; // 遍历对话
-            foreach (var d in train.Dialogues) 
+        
+        foreach (var d in data.Dialogues) 
+        { 
+            for (int i = 0; i < d.Value.Count; i++) 
             { 
-                for (int i = 0; i < d.Value.Count; i++) 
-                { 
-                    var item = d.Value[i]; 
-                    if (string.IsNullOrEmpty(item.User)) continue; 
-                    DialogueItem new_item = await ProcessDialogueItem(item); 
-                    if (new_item != null) { 
-                        // 只更新指定字段
-                        item.UserOps = new_item.UserOps ?? item.UserOps; 
-                        // 其他字段保持不变
-                    } 
-                    if(i>0) break; 
-                } 
-                // 只处理第一个学生回复
-                break;
-            } 
-        }
+                var item = d.Value[i]; 
+                if (string.IsNullOrEmpty(item.User)) continue; 
+                DialogueItem new_item = await ProcessDialogueItem(item); 
+                if (new_item != null) { 
+                    // 只更新指定字段
+                    item.UserOps = new_item.UserOps ?? item.UserOps; 
+                    // 其他字段保持不变
+                }
+                //break;
+            }
+            //break;
+        } 
+        
 
         // ✅ 保存为新文件
-        //string newPath = Path.Combine(Path.GetDirectoryName(textPath), "updated_" + Path.GetFileName(textPath));
-        //string updatedJson = JsonConvert.SerializeObject(data, Formatting.Indented);
-        //await File.WriteAllTextAsync(newPath, updatedJson);
-        //Debug.Log($"✅ 处理完成，结果已保存到: {newPath}");
+        string newPath = Path.Combine(Path.GetDirectoryName(textPath), "updated_" + Path.GetFileName(textPath));
+        string updatedJson = JsonConvert.SerializeObject(data, Formatting.Indented);
+        await File.WriteAllTextAsync(newPath, updatedJson);
+        Debug.Log($"✅ 处理完成，结果已保存到: {newPath}");
     }
 
     
@@ -189,12 +215,8 @@ public class text2json : MonoBehaviour
             // 可选：如果 operator 有父物体，移动父物体（本实现直接移动 object 自身）
         }
     }
-    private (GameObject opObj, GameObject targetObj) place_object_begin(string optext)
+    private (GameObject opObj, GameObject targetObj) place_object_begin(string optext, Dictionary<string, GameObject> cache,string opName,string targetName,Transform currentSceneRoot)
     {
-        JObject obj = JObject.Parse(optext);
-        string opName = obj["操作物体"]?.ToString();
-        string targetName = obj["被操作物体"]?.ToString();
-
         if (string.IsNullOrEmpty(opName) || string.IsNullOrEmpty(targetName))
         {
             Debug.LogError("JSON 中缺少 '操作物体' 或 '被操作物体' 字段");
@@ -211,8 +233,8 @@ public class text2json : MonoBehaviour
         }
 
         // 场景中查找
-        GameObject opObj = GameObject.Find("SceneRoot/" + opPrefab.name);
-        GameObject targetObj = GameObject.Find("SceneRoot/" + targetPrefab.name);
+        GameObject opObj = FindOrCache(opPrefab.name,cache, currentSceneRoot);
+        GameObject targetObj = FindOrCache(targetPrefab.name,cache, currentSceneRoot);
         bool opExisted = opObj != null;
         bool targetExisted = targetObj != null;
 
@@ -221,16 +243,14 @@ public class text2json : MonoBehaviour
         // ============ 初始化 targetObj ============
         if (!targetExisted)
         {
-            targetObj = Instantiate(targetPrefab, Vector3.zero, Quaternion.identity, parentTransform);
+            targetObj = Instantiate(targetPrefab, Vector3.zero, Quaternion.identity, currentSceneRoot);
             targetObj.name = targetPrefab.name;
+            cache[targetObj.name] = targetObj;
         }
         else
         {
             // 若存在，重置其 transform（位置、旋转、缩放）
-            targetObj.transform.SetParent(parentTransform);
-            targetObj.transform.localPosition = Vector3.zero;
-            targetObj.transform.localRotation = Quaternion.identity;
-            targetObj.transform.localScale = Vector3.one;
+            targetObj.transform.SetParent(currentSceneRoot);
         }
 
         // ============ 初始化 opObj ============
@@ -239,33 +259,54 @@ public class text2json : MonoBehaviour
             // 暂放右侧
             Vector3 tempPos = targetObj.transform.position +
                 new Vector3((extractor_json.GetApproximateSize(opPrefab) + extractor_json.GetApproximateSize(targetPrefab)) + padding, 0f, 0f);
-            opObj = Instantiate(opPrefab, tempPos, Quaternion.identity, parentTransform);
+            opObj = Instantiate(opPrefab, tempPos, Quaternion.identity, currentSceneRoot);
             opObj.name = opPrefab.name;
+            cache[opObj.name] = opObj;
         }
         else
         {
             // 若存在，也重置 transform
-            opObj.transform.SetParent(parentTransform);
-            opObj.transform.localRotation = Quaternion.identity;
-            opObj.transform.localScale = Vector3.one;
+            opObj.transform.SetParent(currentSceneRoot);
 
             // 将其移动到 target 右侧初始位置
             Vector3 tempPos = targetObj.transform.position +
                 new Vector3((extractor_json.GetApproximateSize(opObj) + extractor_json.GetApproximateSize(targetObj)) + padding, 0f, 0f);
             opObj.transform.localPosition = tempPos;
         }
+        // ============ 对齐 opObj 的法向量 ============
+        //Quaternion rotationDelta = Quaternion.FromToRotation(opObj.transform.up, targetObj.transform.up);
+        //opObj.transform.rotation = rotationDelta * opObj.transform.rotation;
+
 
         // ============ 确保不重叠 ============
         EnsureNoOverlap_MoveOperatorRight(opObj, targetObj, padding);
 
         return (opObj, targetObj);
     }
+    // ==============================
+    // 🔍 辅助函数：对象解析缓存
+    // ==============================
+    private GameObject FindOrCache(string name, Dictionary<string, GameObject> cache,Transform currentSceneRoot)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+        if (cache.TryGetValue(name, out var obj)) return obj;
 
+        obj = currentSceneRoot.transform.Find(name)?.gameObject;
+        if (obj != null) cache[name] = obj;
+        //else Debug.LogWarning($"❗ 未找到对象: {name}");
+        return obj;
+    }
 
 
     // ✅ 单条对话处理
     private async Task<DialogueItem> ProcessDialogueItem(DialogueItem item)
     {
+        Dictionary<string, GameObject> cache = new Dictionary<string, GameObject>();
+        // 每轮创建独立 SceneRoot 节点
+        //Transform currentSceneRoot = new GameObject($"SceneRoot_{Guid.NewGuid()}").transform;
+        //currentSceneRoot.SetParent(parentTransform);
+        // 等待上一个截图任务结束后再清空
+        //ClearSceneRoot();
         string studentReply = item.User;
         string operationsText = await GetOp(studentReply);
 
@@ -290,58 +331,129 @@ public class text2json : MonoBehaviour
         
         foreach (var op in operations)
         {
-            //if (op != "把导管另一端插入集气瓶") continue;
-            int index = studentReply.IndexOf(op, StringComparison.Ordinal);
-            if (index == -1)
+            try
             {
-                Debug.LogWarning($"⚠ 未找到操作文本: {op}");
+                //if (op != "在试管里加入少量大理石块") continue;
+                int index = studentReply.IndexOf(op, StringComparison.Ordinal);
+                if (index == -1)
+                {
+                    Debug.LogWarning($"⚠ 未找到操作文本: {op}");
+                    continue;
+                }
+
+                Debug.Log(op);
+            }
+            catch
+            {
+                continue;
+            }
+            
+            OpInfo op1 = null;
+            
+            string opText = await GetText(op, studentReply);
+            Debug.Log(opText);
+            JObject obj = new();
+            try
+            {
+                obj = JObject.Parse(opText);
+            }
+            catch
+            {
+                continue;
+            }
+            string opName = "";
+            string targetName = "";
+            try
+            {
+                opName = obj["操作物体"]?.ToString();
+                targetName = obj["被操作物体"]?.ToString();
+            }
+            catch
+            {
+                Debug.LogWarning($"JSON 解析错误，跳过该操作文本");
+                continue;
+            }
+            
+            (GameObject opObj, GameObject targetObj) op_objects = new();
+            List<string> begin_pic = new();
+            List<string> end_pic = new();
+            GameObject opObj = null;
+            GameObject targetObj = null;
+            try
+            {
+                // 定义函数对物体摆放进行初始化
+                op_objects = place_object_begin(opText, cache, opName, targetName, parentTransform);
+                opObj = op_objects.opObj;
+                targetObj = op_objects.targetObj;
+                if (opObj == null || targetObj == null) continue;
+                // 对上述两物体进行多角度截图,初始
+                begin_pic = await mfs.CaptureObjectsFromAnglesAsync(opObj, targetObj, op + "_start",opName,targetName);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"❌ 初始化错误: {ex.Message}");
+                continue;
+            }
+            
+
+            GameObject op_1 = opObj.name.EndsWith("_combined") ? opObj.transform.Find(opName)?.gameObject : opObj;
+            GameObject op_2 = targetObj.name.EndsWith("_combined") ? targetObj.transform.Find(targetName)?.gameObject : targetObj;
+            if (op_1 == null || op_2 == null)
+            {
+                Debug.LogWarning($"未找到可操作的原始物体");
+            }
+            string opJson = "";
+
+            try
+            {
+                opJson = await GetJson(opText, (op_1, op_2));
+                Debug.Log(opJson);
+            }
+            catch
+            {
+                Debug.LogWarning($"获取动作序列json错误");
                 continue;
             }
 
-            Debug.Log(op);
-
-            string opText = await GetText(op, studentReply);
-            Debug.Log(opText);
-
-            // 定义函数对物体摆放进行初始化
-            var op_objects = place_object_begin(opText);
-            
-            List<string> begin_pic = new();
-            List<string> end_pic = new();
-            GameObject opObj = op_objects.opObj;
-            GameObject targetObj = op_objects.targetObj;
-            // 对上述两物体进行多角度截图,初始
-            mfs.CaptureObjectsFromAngles(opObj, targetObj, op + "_start", (paths) => {
-                foreach (var p in paths)
-                    begin_pic.Add(p);
-            });
-            string opJson = await GetJson(opText,op_objects);
-            Debug.Log(opJson);
-
             if (opJson != null)
             {
-                //当json不为空时，执行动作序列，进行多角度截图
-                actionExecutor.ExecuteSteps(opJson);
-                mfs.CaptureObjectsFromAngles(opObj, targetObj, op + "_end", (paths) => {
-                    foreach (var p in paths)
-                        end_pic.Add(p);
-                });
+                try
+                {
+                    //当json不为空时，执行动作序列，进行多角度截图
+                    actionExecutor.ExecuteSteps(opJson, cache, parentTransform);
+                    opObj = cache[opName];
+                    targetObj = cache[targetName];
+                    if (opObj == null || targetObj == null) continue;
+                    end_pic = await mfs.CaptureObjectsFromAnglesAsync(opObj, targetObj, op + "_end", opName, targetName);
+                }
+                catch
+                {
+                    Debug.LogWarning($"执行动作序列错误");
+                    continue;
+                }
+
             }
             else
             {
-                return null;
+                continue;
             }
-            OpInfo op1 = new OpInfo
+            var parsed = JsonConvert.DeserializeObject(opJson); // 先解析
+            opJson = JsonConvert.SerializeObject(parsed, Formatting.Indented); // 再美化
+            op1 = new OpInfo
             {
                 OpeningImage = begin_pic,
                 Steps = opJson,
                 EndPicture = end_pic
             };
+            
+            
             Dictionary<string, OpInfo> userOp = new();
             userOp[op] = op1;
             userOps.Add(userOp);
             //break;
         }
+        // ✅ 等所有截图协程结束后再安全销毁
+        ClearSceneRoot();
 
         return new DialogueItem
         {

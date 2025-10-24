@@ -3,27 +3,29 @@ using System.Collections;
 using System.IO;
 using System.Collections.Generic;
 using System;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 
 public class MultiAngleScreenshot : MonoBehaviour
 {
     public Camera captureCamera;
     public int imageWidth = 1024;
     public int imageHeight = 1024;
-    public string saveFolder = "Screenshots";
+    public string saveFolder = "Screenshots_1";
     public float paddingFactor = 1.2f; // 稍微拉远一点，防止边缘裁切
     public bool transparentBackground = true; // ✅ 是否导出透明背景
 
-    public void CaptureObjectsFromAngles(GameObject opObj, GameObject targetObj, string filename, Action<List<string>> onComplete)
+    public void CaptureObjectsFromAngles(GameObject opObj, GameObject targetObj, string filename, string opName, string targetName,Action<List<string>> onComplete)
     {
         if (captureCamera == null)
         {
             Debug.LogError("请在 Inspector 中指定一个截图相机！");
             return;
         }
-        StartCoroutine(CaptureRoutine(opObj, targetObj, filename, onComplete));
+        StartCoroutine(CaptureRoutine(opObj, targetObj, filename, opName, targetName,onComplete));
     }
 
-    private IEnumerator CaptureRoutine(GameObject opObj, GameObject targetObj, string filename, Action<List<string>> onComplete)
+    private IEnumerator CaptureRoutine(GameObject opObj, GameObject targetObj, string filename, string opName, string targetName,Action<List<string>> onComplete)
     {
         // ✅ 找 SceneRoot
         Transform sceneRoot = GameObject.Find("SceneRoot")?.transform;
@@ -42,19 +44,19 @@ public class MultiAngleScreenshot : MonoBehaviour
         {
             if (child == null) continue;
             bool keepVisible = (child.gameObject == opObj || child.gameObject == targetObj ||
-                                child.IsChildOf(opObj.transform) || child.IsChildOf(targetObj.transform));
+                                opObj.transform.IsChildOf(child) || targetObj.transform.IsChildOf(child));
             originalStates[child.gameObject] = child.gameObject.activeSelf;
             child.gameObject.SetActive(keepVisible); // 只保留目标对象
         }
 
         // ✅ 锁定 LODGroup
-        List<LODGroup> lodGroups = new List<LODGroup>();
-        lodGroups.AddRange(opObj.GetComponentsInChildren<LODGroup>(true));
-        if (targetObj != null)
-            lodGroups.AddRange(targetObj.GetComponentsInChildren<LODGroup>(true));
+        //List<LODGroup> lodGroups = new List<LODGroup>();
+        //lodGroups.AddRange(opObj.GetComponentsInChildren<LODGroup>(true));
+        //if (targetObj != null)
+        //    lodGroups.AddRange(targetObj.GetComponentsInChildren<LODGroup>(true));
 
-        foreach (var lodGroup in lodGroups)
-            lodGroup.ForceLOD(0); // 锁定最高 LOD
+        //foreach (var lodGroup in lodGroups)
+        //    lodGroup.ForceLOD(0); // 锁定最高 LOD
 
         // ✅ 确保相机存在且启用
         if (captureCamera == null)
@@ -79,7 +81,7 @@ public class MultiAngleScreenshot : MonoBehaviour
         string[] angleLabels = { "front", "right", "left", "topright", "top" };
 
         // ✅ 文件路径
-        string folderPath = Path.Combine(Application.dataPath, saveFolder);
+        string folderPath = Path.Combine(@"E:\llm_lab", saveFolder);
         if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
 
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
@@ -99,9 +101,18 @@ public class MultiAngleScreenshot : MonoBehaviour
             captureCamera.transform.LookAt(center);
 
             yield return new WaitForEndOfFrame();
-
-            string fileName = $"{filename}_{opObj.name}_{targetObj?.name}_{angleLabels[i]}_{timestamp}.png";
-            string filePath = Path.Combine(folderPath, fileName);
+            string filePath = "";
+            try
+            {
+                string fileName = $"{filename}_{opName}_{targetName}_{angleLabels[i]}_{timestamp}.png";
+                filePath = Path.Combine(folderPath, fileName);
+            }
+            catch
+            {
+                string fileName = $"{filename}_{angleLabels[i]}_{timestamp}.png";
+                filePath = Path.Combine(folderPath, fileName);
+            }
+            
 
             SaveCameraView(captureCamera, filePath);
             capturedPaths.Add(filePath);
@@ -115,8 +126,8 @@ public class MultiAngleScreenshot : MonoBehaviour
         }
 
         // ✅ 恢复 LOD 自动
-        foreach (var lodGroup in lodGroups)
-            lodGroup.ForceLOD(-1);
+        //foreach (var lodGroup in lodGroups)
+        //    lodGroup.ForceLOD(-1);
 
         Debug.Log($"✅ 多角度截图完成，共 {angles.Length} 张，保存路径：{folderPath}");
         onComplete?.Invoke(capturedPaths);
@@ -157,4 +168,12 @@ public class MultiAngleScreenshot : MonoBehaviour
         foreach (var r in bRenderers) bounds.Encapsulate(r.bounds);
         return bounds;
     }
+
+    public async Task<List<string>> CaptureObjectsFromAnglesAsync(GameObject opObj, GameObject targetObj, string filename,string opName,string targetName)
+    {
+        TaskCompletionSource<List<string>> tcs = new TaskCompletionSource<List<string>>();
+        CaptureObjectsFromAngles(opObj, targetObj, filename, opName,targetName,paths => tcs.SetResult(paths));
+        return await tcs.Task;
+    }
+
 }
