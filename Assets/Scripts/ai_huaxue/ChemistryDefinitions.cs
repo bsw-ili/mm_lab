@@ -766,11 +766,13 @@ public static class ChemistryDefinitions
             { "center", "Located at the geometric center of the mesh — represents the main heating area above the flame." },
         }},
         {
-            "crucible_tongs", new Dictionary<string, string> {
-                { "tip", "Located at the clamping end — represents the gripping jaws used to hold or transfer hot crucibles and other heated apparatus." },
-                { "handle", "Located at the opposite end — represents the handle area used for holding and controlling the tongs safely." }
+            "crucible_tongs", new Dictionary<string, string>{
+                { "front_tip", "Located at the very front of the tongs — the pointed ends used to grip small or narrow objects such as matches or metal wires." },
+                { "middle_hole", "Located at the circular gripping section in the middle — used to hold larger objects like crucibles or evaporating dishes securely." },
+                { "handle_end", "Located at the opposite side of the tongs — the handle area held by hand for control and safety during operation." }
             }
         },
+
 
         { "alcohol_lamp_cap", new Dictionary<string, string> {
             { "top_center", "Located at the top center of the cap — used as a reference for alignment or grasping when removing or placing the cap." },
@@ -846,9 +848,19 @@ public static class ChemistryDefinitions
             "candle", new Dictionary<string, string>{
                 {"wick_tip", "Located at the top of the wick — the part that is ignited to produce flame.（位于烛芯顶端，用于点燃产生火焰。）"},
                 {"candle_body", "Located along the main cylindrical or tapered body — provides fuel for the flame.（位于蜡烛主体部分，为火焰提供燃料。）"},
+                { "flame_center", "It indicates the center of the flame burning and is the \"heating anchor point\" during heating experiments." },
                 {"base_end", "Located at the bottom of the candle — used for stable placement on a holder or surface.（位于蜡烛底部，用于放置在烛台或平面上保持稳定。）"}
             }
         },
+        {
+            "laser_pointer", new Dictionary<string, string>{
+                {"front_lens_center", "The geometric center of the front lens of the laser pointer, where the laser beam is emitted"},
+                {"button_center", "The center point of the control button on the body of the laser pointer, used to activate the laser"},
+                {"tail_end", "The center of the rear end of the laser pointer, typically where the battery cap or power connection is located"},
+                {"laser_beam_point", "The point in space directly in front of the front lens center where the laser beam is aimed or projected"}
+            }
+        },
+
         {
             "plastic_bottle", new Dictionary<string, string>{
                 {"cap", "Located at the top opening of the bottle — used for sealing and opening to pour or fill liquid.（位于瓶口顶部，用于密封或开启以倒入或注入液体。）"},
@@ -894,11 +906,7 @@ public static class ChemistryDefinitions
 
         { "retort_stand", new Dictionary<string, string> {
              { "base_center", "Located at the geometric center of the flat base plate of the retSyringeort stand, serving as the placement reference point.（位于铁架台底板的几何中心，用作放置参考点）" },
-             { "rod_middle", "Located at the middle section of the vertical metal rod, often used for clamping equipment such as burettes or test tubes.（位于竖直金属杆的中部，常用于夹持滴定管或试管等器材）" },
-             { "rod_top", "Located at the upper end of the vertical metal rod, typically the highest connection or fixing point.（位于金属竖杆的顶端，通常为最高连接或固定点）" },
-             { "fixing_end", "Located at the part of the clamp that attaches to the retort stand rod, serving as the connection anchor.（位于夹持器固定于铁架台立杆的一端，为连接锚点）" },
-             { "clamp_center", "Located at the middle joint of the clamp arms, representing the rotation or tightening point.（位于铁夹两臂中部的连接或旋转点，是调节夹紧度的位置）" },
-             { "clamping_end", "Located at the tips of the clamp arms, used to hold laboratory apparatus such as test tubes or flasks.（位于铁夹前端，用于夹持试管、烧瓶等器材）" }
+             { "clamp_center", "Located at the tips of the clamp arms, used to hold laboratory apparatus such as test tubes or flasks.（位于铁夹前端，用于夹持试管、烧瓶等器材）" }
         }},
         { "ground_glass_plate", new Dictionary<string, string> {
             { "top_center", "top surface center" },

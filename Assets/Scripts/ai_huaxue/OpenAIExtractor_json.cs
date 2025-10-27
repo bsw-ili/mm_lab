@@ -334,7 +334,7 @@ public class OpenAIExtractor_json : MonoBehaviour
         
         - AddSolid：为指定物体添加固体（若未指定，默认 material = ""default_solid""） 
         字段: { op:AddSolid,equipment: {equipment_name}, material: ""solid_name"" }
-
+        
         - AlignByAnchor：根据锚点对齐源物体和目标物体，我们定义了两种对齐模式：
             1. AlignPosition，这种模式下，我们只对齐锚点的位置，而不改变源物体的方向。适用于需要保持物体原有朝向的操作，如加热、倾倒,加入固体，滴加液体等。
             2. AlignPositionRotation，这种模式下，我们不仅对齐锚点的位置，还会调整源物体的方向，使其法向量与目标物体的法向量一致。适用于需要改变物体朝向的操作，如夹持、塞住、插入等。

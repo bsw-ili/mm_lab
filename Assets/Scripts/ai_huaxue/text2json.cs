@@ -7,6 +7,7 @@ using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Unity.VisualScripting;
+using System.Linq;
 
 public class DialogueItem
 {
@@ -57,6 +58,7 @@ public class text2json : MonoBehaviour
     private readonly Regex operationRegex = new Regex(@"-\s*(.+)");
     private string outputDir;
     public Transform parentTransform;
+    public string saveFolder = "D:\\postgraduate\\多模态大模型_化学实验\\output\\update_json";
 
     private async void Start()
     {
@@ -70,7 +72,7 @@ public class text2json : MonoBehaviour
         // 获取文件夹下的所有文件路径
         string[] files = Directory.GetFiles(folderPath);
 
-        foreach (var file in files)
+        foreach (var file in files.Skip(172))
         {
             await ProcessJsonFileAsync(file);
             //break; // 只处理第一个文件进行测试
@@ -150,7 +152,7 @@ public class text2json : MonoBehaviour
         
 
         // ✅ 保存为新文件
-        string newPath = Path.Combine(Path.GetDirectoryName(textPath), "updated_" + Path.GetFileName(textPath));
+        string newPath = Path.Combine(saveFolder, "updated_" + Path.GetFileName(textPath));
         string updatedJson = JsonConvert.SerializeObject(data, Formatting.Indented);
         await File.WriteAllTextAsync(newPath, updatedJson);
         Debug.Log($"✅ 处理完成，结果已保存到: {newPath}");
@@ -454,6 +456,9 @@ public class text2json : MonoBehaviour
         }
         // ✅ 等所有截图协程结束后再安全销毁
         ClearSceneRoot();
+        Resources.UnloadUnusedAssets();
+        GC.Collect();
+        await Task.Delay(100);
 
         return new DialogueItem
         {

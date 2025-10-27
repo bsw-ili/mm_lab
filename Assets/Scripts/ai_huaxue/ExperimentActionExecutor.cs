@@ -127,7 +127,7 @@ public class ExperimentActionExecutor : MonoBehaviour
             srcObj.transform.position += delta;
 
             // ✳️ 对齐完成后检查是否重叠（沿目标锚点法线方向推开）
-            EnsureNoOverlap_AlongNormal(srcObj, tgtObj, targetAnchor.up, 0.01f);  // padding = 1cm
+            EnsureNoOverlap_AlongNormal(srcObj, tgtObj, 0.01f);  // padding = 1cm
 
             cache[srcObj.name] = srcObj;
             cache[tgtObj.name] = tgtObj;
@@ -221,6 +221,17 @@ public class ExperimentActionExecutor : MonoBehaviour
 
                 // 然后销毁空的 sourceObj
                 UnityEngine.Object.Destroy(sourceObj);
+                // 确保缓存中不再引用已销毁的对象
+                List<string> keysToRemove = new List<string>();
+                foreach (var kv in cache)
+                {
+                    if (kv.Value == sourceObj)
+                        keysToRemove.Add(kv.Key);
+                }
+                foreach (string key in keysToRemove)
+                {
+                    cache.Remove(key);
+                }
 
                 Debug.Log($"♻️ 已合并两个 combined：保留 {targetObj.name}，销毁 {sourceObj.name}");
             }
@@ -271,33 +282,42 @@ public class ExperimentActionExecutor : MonoBehaviour
     /// <summary>
     /// 沿目标锚点法向量推开 sourceObj，避免穿模
     /// </summary>
-    private void EnsureNoOverlap_AlongNormal(GameObject sourceObj, GameObject targetObj, Vector3 targetNormal, float padding)
+    private void EnsureNoOverlap_AlongNormal(GameObject sourceObj, GameObject targetObj, float padding = 0.001f)
     {
         if (sourceObj == null || targetObj == null) return;
 
-        if (!TryGetCombinedBounds(sourceObj, out Bounds srcBounds) || !TryGetCombinedBounds(targetObj, out Bounds tarBounds))
-            return;
+        Collider srcCol = sourceObj.GetComponentInChildren<Collider>();
+        Collider tarCol = targetObj.GetComponentInChildren<Collider>();
+        if (srcCol == null || tarCol == null) return;
 
-        if (srcBounds.Intersects(tarBounds))
-        {
-            Vector3 normal = targetNormal.normalized;
-            float srcMin = Vector3.Dot(srcBounds.min, normal);
-            float tarMax = Vector3.Dot(tarBounds.max, normal);
+        Vector3 direction;
+        float distance;
 
-            float shift = (tarMax - srcMin) + padding;
-            // 强制为正值（确保始终朝 normal 的正方向移动）
-            if (shift <= 0f) shift = Mathf.Abs(padding) > 0f ? padding : 0.001f;
-            Vector3 newPos = sourceObj.transform.position + normal * shift;
-            sourceObj.transform.position = newPos;
+        bool overlap = Physics.ComputePenetration(
+            srcCol, sourceObj.transform.position, sourceObj.transform.rotation,
+            tarCol, targetObj.transform.position, targetObj.transform.rotation,
+            out direction, out distance
+        );
 
-            Rigidbody rb = sourceObj.GetComponent<Rigidbody>();
-            if (rb != null && !rb.isKinematic)
-            {
-                rb.MovePosition(newPos);
-            }
+        if (!overlap || distance <= 0f) return;
 
-            Debug.Log($"🚫 检测到重叠，已沿法线方向偏移 {shift:F3} m 以避免穿模。");
-        }
+        // 根据严重重叠阈值，控制移动
+        // 可以把 distance / targetColliderSize 作为 overlapRatio
+        float overlapRatio = distance / Mathf.Max(tarCol.bounds.size.magnitude, 0.0001f);
+
+        Vector3 move;
+        
+        // 沿穿透方向移动
+        float scaleFactor = 0.5f; // 缩小移动幅度，避免过大
+        move = direction.normalized * distance * scaleFactor;
+        
+
+        Vector3 newPos = sourceObj.transform.position + move;
+        sourceObj.transform.position = newPos;
+
+        Rigidbody rb = sourceObj.GetComponent<Rigidbody>();
+        if (rb != null && !rb.isKinematic)
+            rb.MovePosition(newPos);
     }
     #endregion
 

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 public class MultiAngleScreenshot : MonoBehaviour
 {
@@ -141,6 +142,33 @@ public class MultiAngleScreenshot : MonoBehaviour
         float distance = radius / Mathf.Sin(halfFOV);
         return distance * padding;
     }
+    /// <summary>
+    /// 将文件路径中非法字符替换为安全字符，并确保文件夹存在
+    /// </summary>
+    /// <param name="originalPath">原始文件路径</param>
+    /// <param name="replacement">替换字符，默认使用下划线</param>
+    /// <returns>可安全保存的完整文件路径</returns>
+    public static string GetSafeFilePath(string originalPath, string replacement = "_")
+    {
+        // 获取目录和文件名
+        string folder = Path.GetDirectoryName(originalPath);
+        string fileName = Path.GetFileName(originalPath);
+
+        // 替换文件夹路径中的非法字符
+        string safeFolder = Regex.Replace(folder, @"[<>:""/\\|?*]", replacement);
+
+        // 替换文件名中的非法字符
+        string safeFileName = Regex.Replace(fileName, @"[<>:""/\\|?*]", replacement);
+
+        // 如果文件夹不存在，创建它
+        if (!Directory.Exists(safeFolder))
+        {
+            Directory.CreateDirectory(safeFolder);
+        }
+
+        // 返回完整安全路径
+        return Path.Combine(safeFolder, safeFileName);
+    }
 
     private void SaveCameraView(Camera cam, string filePath)
     {
@@ -150,12 +178,18 @@ public class MultiAngleScreenshot : MonoBehaviour
         cam.Render();
         RenderTexture.active = rt;
         screenShot.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0);
-        cam.targetTexture = null;
-        RenderTexture.active = null;
-        Destroy(rt);
-
+        screenShot.Apply();
+        filePath = GetSafeFilePath(filePath);
         byte[] bytes = screenShot.EncodeToPNG();
         File.WriteAllBytes(filePath, bytes);
+
+        // ✅ 释放 Texture2D 显存
+        UnityEngine.Object.DestroyImmediate(screenShot);
+
+        // ✅ 释放 RenderTexture
+        cam.targetTexture = null;
+        RenderTexture.active = null;
+        rt.Release();
     }
 
     private Bounds CalculateCombinedBounds(GameObject a, GameObject b)
