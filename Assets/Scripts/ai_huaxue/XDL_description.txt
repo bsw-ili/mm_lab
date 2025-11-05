@@ -1,19 +1,19 @@
-XDL files will follow XML syntax and consist of three mandatory sections: Hardware, where virtual vessels that the reaction mixture can reside in are declared. Reagents, where all reagents that are used in the procedure are declared, and Procedure, where the synthetic actions involved in the procedure are linearly declared.
+XDL files will follow XML syntax and consist of three mandatory sections: Hardware, where virtual vessels that the reaction mixture can reside in are declared. Reagents, where all reagents that are used in the procedure are declared, and Procedure, where the actions involved in the procedure are linearly declared.
 
 XDL File Stub:
 <XDL>
   <Synthesis>  
-      <Hardware>
-          <!-- ... -->
-      </Hardware>
+    <Hardware>
+        <!-- ... -->
+    </Hardware>
   
-      <Reagents>
-          <!-- ... -->
-      </Reagents>
+    <Reagents>
+        <!-- ... -->
+    </Reagents>
   
-      <Procedure>
-          <!-- ... -->
-      </Procedure>
+    <Procedure>
+        <!-- ... -->
+    </Procedure>
   </Synthesis>
 </XDL>
 
@@ -36,228 +36,132 @@ Reagent used by procedure.
 name, str, Name of reagent
 
 Procedure:
-All steps included in the Full Steps Specification may be given within the Procedure block of a XDL file. Additionally, the Procedure block may be, but does not have to be, divided up into Prep, Reaction, Workup and Purification blocks, each of which can contain any of the steps in the specification.
+All steps included in the Full Steps Specification may be given within the Procedure block of a XDL file. 
 
 
 Here is a list of tags that can be used in this language:
-Liquid Handling: Add, Separate, Transfer, 
+Hardware Manipulate: Fix, Clamp, Insert
+Reagents Manipulate: Add, Transfer, 
 Stirring: Stir
-Temperature Control: HeatChill, HeatChillToTemp, StartHeatChill, StopHeatChill
-Inert Gas: EvacuateAndRefill, Purge, StartPurge, StopPurge
-Filtration: Filter, FilterThrough, WashSolid
-Special: Wait, Repeat,
-Measure: Monitor
-Other: CleanVessel, Crystallize, Dissolve, Dry, Evaporate, Irradiate, Precipitate, ResetHandling, RunColumn, RunCV
+Temperature Control: Heat
+Special: Wait,
+
+XDL Operation Specification (Steps)
+=================================
+
+This document defines the standardized Steps section for XDL files, organized into five main operational categories:
+Hardware Manipulate, Reagents Manipulate, Stirring, Temperature Control, and Special.
 
-Steps:
-Liquid Handling:
-Add liquid or solid reagent. Reagent identity (ie liquid or solid) is determined by the solid property of a reagent in the Reagent section.
+------------------------------------------------------------
+1. Hardware Manipulate
+------------------------------------------------------------
 
-The quantity of the reagent can be specified using volume (liquid units, all accepted units e.g. ‘g’, ‘mL’, ‘eq’, ‘mmol’).
-
-format(Property	Type	Description)
-vessel	vessel	Vessel to add reagent to.
-reagent	reagent	Reagent to add.
-
-
-Separate:
-Perform separation.
-format(Property Type Description)
-Property	Type	Description
-purpose	str	'wash' or 'extract'. 'wash' means that product phase will not be the added solvent phase, 'extract' means product phase will be the added solvent phase. If no solvent is added just use 'extract'.
-product_phase	str	'top' or 'bottom'. Phase that product will be in.
-from_vessel	vessel	Contents of from_vessel are transferred to separation_vessel and separation is performed.
-separation_vessel	vessel	Vessel in which separation of phases will be carried out.
-to_vessel	vessel	Vessel to send product phase to.
-
-
-Transfer:
-Transfer liquid from one vessel to another.
-
-The quantity to transfer can be specified using volume (liquid units, all accepted units e.g. ‘g’, ‘mL’, ‘eq’, ‘mmol’).
-
-format(Property	Type	Description)
-from_vessel	vessel	Vessel to transfer liquid from.
-to_vessel	vessel	Vessel to transfer liquid to.
-
-
-Stirring:
-
-Stir:
-Stir vessel for given time.
-
-format(Property	Type	Description)
-vessel	vessel	Vessel to stir.
-time	float	Time to stir vessel for.
-
-
-Temperature Control:
-
-HeatChill:
-Heat or chill vessel to given temp for given time.
-
-format(Property	Type	Description)
-vessel	vessel	Vessel to heat or chill.
-temp	float	Temperature to heat or chill vessel to.
-time	float	Time to heat or chill vessel for.
-
-
-HeatChillToTemp:
-Heat or chill vessel to given temp.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to heat or chill.
-temp  float Temperature to heat or chill vessel to.
-
-
-StartHeatChill:
-Start heating or chilling vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to start heating or chilling.
-
-
-StopHeatChill:
-Stop heating or chilling vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to stop heating or chilling.
-
-
-EvacuateAndRefill:
-Evacuate vessel and refill with inert gas.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to evacuate and refill.
-
-
-Purge:
-Purge vessel with inert gas.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to purge.
-
-
-StartPurge:
-Start purging vessel with inert gas.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to start purging.
-
-
-StopPurge:
-Stop purging vessel with inert gas.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to stop purging.
-
-
-Filtration:
-
-Filter:
-Filter contents of vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to filter.
-
-
-FilterThrough:
-Filter contents of vessel through filter.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to filter.
-filter  filter  Filter to filter through.
-
-
-WashSolid:
-Wash solid in vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to wash solid in.
-solvent  reagent  Solvent to wash solid with.
-volume  float  Volume of solvent to use.
-
-
-Wait:
-Wait for given time.
-
-format(Property Type  Description)
-time  float Time to wait for.
-
-
-Repeat:
-Repeat children of this step.
-
-format(Property Type  Description)
-repeats  int Number of times to repeat children. If monitoring a condition is required, this property does not need to be included.
-
-
-Other:
-CleanVessel:
-Clean vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to clean.
-
-
-Crystallize:
-Crystallize contents of vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to crystallize.
-
-
-Dissolve:
-Dissolve solid in vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to dissolve solid in.
-
-
-Dry:
-Dry contents of vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to dry.
-
-
-Evaporate:
-Evaporate contents of vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to evaporate.
-
-
-Irradiate:
-Irradiate contents of vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to irradiate.
-
-
-Precipitate:
-Precipitate contents of vessel.
-
-format(Property Type  Description)
-vessel  vessel  Vessel to precipitate.
-
-
-ResetHandling:
-Reset liquid handling.
-
-
-RunColumn:
-Run column.
-
-format(Property Type  Description)
-column  column  Column to run.
-
-RunCV:
-Run cyclic voltammetry.
-
-Monitor:
-Measure property
-
-format(Property Type  Description)
-target vessel  Vessel to measure.
-quantity  str  Property to measure.
+1.1 Attach
+Description:
+    Attach or secure a vessel to a support, holder, or clamp tool.
+    This operation unifies both “Fix” and “Clamp” actions, allowing flexible attachment of vessels using various supporting components.
+
+Properties:
+    vessel (vessel) - Vessel to be attached or fixed.
+    support (component) - Identifier of the support, holder, or clamp used to secure the vessel.
+    method (string, optional) - Method of attachment (e.g., fix, clamp, mount).
+
+Example:
+    <Attach vessel="flask_1" support="stand_1"/>
+
+------------------------------------------------------------
+
+1.2 Insert
+Description:
+    Insert an instrument, tool, or component into another apparatus or container for experimental setup, reaction measurement, or connection purposes (e.g., inserting a thermometer into a flask, or a probe into a reactor).
+
+Properties:
+    tool (component) — Component to be inserted (e.g., thermometer, probe, tube,rubber_stopper).
+    vessel (vessel) — Apparatus, container, or device into which the component is inserted.
+    purpose (str) — Purpose or reason for insertion (optional, e.g., “temperature monitoring”).
+
+Example:
+    <Insert tool="thermometer_1" vessel="flask_1"/>
+
+------------------------------------------------------------
+2. Reagents Manipulate
+------------------------------------------------------------
+
+2.1 Add
+Description:
+    Add a reagent (liquid or solid) to a specific vessel.
+
+Properties:
+    vessel (vessel) - Target vessel.
+    reagent (reagent) - Reagent to be added.
+    volume (float) - Amount to add (unit: mL, g, eq, mmol).
+    tool (component) - Tool used for addition (beaker,measuring cylinder,pipette, burette, dispenser).
+
+Example:
+    <Add vessel="flask_1" reagent="acetone" tool="pipette_1" />
+
+------------------------------------------------------------
+
+2.2 Transfer
+Description:
+    Transfer liquid from one vessel to another.
+
+Properties:
+    from_vessel (vessel) - Source vessel.
+    to_vessel (vessel) - Destination vessel.
+    volume (float) - Volume to transfer.
+    tool (component) - Tool used for transfer (pump, syringe, funnel).
+
+Example:
+    <Transfer from_vessel="flask_1" to_vessel="funnel_1" tool="pump_1" />
+
+------------------------------------------------------------
+3. Stirring
+------------------------------------------------------------
+
+3.1 Stir
+Description:
+    Stir the contents of a vessel using a designated tool.
+
+Properties:
+    vessel (vessel) - Vessel to stir.
+    speed (float) - Stirring speed (rpm).
+    time (float) - Stirring duration (min or sec).
+    tool (component) - Stirring device (magnetic_stirrer, overhead_stirrer).
+
+Example:
+    <Stir vessel="flask_1" tool="magnetic_stirrer_1" />
+
+------------------------------------------------------------
+4. Temperature Control
+------------------------------------------------------------
+
+4.1 Heat
+Description:
+    Heat a vessel to a specified temperature using a heating device.
+
+Properties:
+    vessel (vessel) - Vessel to heat.
+    temp (float) - Target temperature (°C).
+    time (float) - Duration of heating.
+    mode (str) - Heating mode (e.g., ramp, hold).
+    tool (component) - Heating device (alcohol_lamp).
+
+Example:
+    <Heat vessel="flask_1" tool="heating_mantle_1" />
+
+------------------------------------------------------------
+5. Special
+------------------------------------------------------------
+
+5.1 Wait
+Description:
+    Pause the process for a specified time or condition.
+
+Properties:
+    time (float) - Duration of wait (min or sec).
+    reason (str) - Reason for waiting (optional).
+    tool (component) - Monitoring or timing device (timer, sensor).
+
+Example:
+    <Wait time="10 min"/>

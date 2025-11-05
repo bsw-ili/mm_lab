@@ -8,71 +8,29 @@ public static class Verify
     // ======= 核心属性定义 =======
     private static readonly Dictionary<string, List<string>> mandatory_properties = new()
     {
-        {"Add", new(){"vessel", "reagent"}},
-        {"Separate", new(){"purpose", "product_phase", "from_vessel", "separation_vessel", "to_vessel"}},
+        {"Add", new(){"vessel", "reagent","tool"}},
         {"Transfer", new(){"from_vessel", "to_vessel"}},
-        {"StartStir", new(){"vessel"}},
-        {"Stir", new(){"vessel", "time"}},
-        {"StopStir", new(){"vessel"}},
-        {"HeatChill", new(){"vessel", "temp", "time"}},
-        {"HeatChillToTemp", new(){"vessel", "temp"}},
-        {"StartHeatChill", new(){"vessel", "temp"}},
-        {"StopHeatChill", new(){"vessel"}},
-        {"EvacuateAndRefill", new(){"vessel"}},
-        {"Purge", new(){"vessel"}},
-        {"StartPurge", new(){"vessel"}},
-        {"StopPurge", new(){"vessel"}},
-        {"Filter", new(){"vessel"}},
-        {"FilterThrough", new(){"from_vessel", "to_vessel", "through"}},
-        {"WashSolid", new(){"vessel", "solvent", "volume"}},
+        {"Attach", new(){"vessel","support"}},
+        {"Stir", new(){"vessel", "tool"}},
+        {"Insert", new(){ "tool", "vessel"}},
+        {"Heat", new(){"vessel", "tool"}},
         {"Wait", new(){"time"}},
-        {"Repeat", new(){}},
-        {"CleanVessel", new(){"vessel"}},
-        {"Crystallize", new(){"vessel"}},
-        {"Dissolve", new(){"vessel", "solvent"}},
-        {"Dry", new(){"vessel"}},
-        {"Evaporate", new(){"vessel"}},
-        {"Irradiate", new(){"vessel", "time"}},
-        {"Precipitate", new(){"vessel"}},
-        {"ResetHandling", new(){}},
-        {"RunColumn", new(){"from_vessel", "to_vessel"}},
-        {"RunCV", new(){}},
-        {"Monitor", new(){"vessel", "quantity"}}
     };
 
     private static readonly Dictionary<string, List<string>> optional_properties = new()
     {
-        {"Add", new(){"vessel", "reagent", "volume", "mass", "amount", "dropwise", "time", "stir", "stir_speed", "viscous", "purpose"}},
-        {"Separate", new(){"purpose", "product_phase", "from_vessel", "separation_vessel", "to_vessel", "waste_phase_to_vessel", "solvent", "solvent_volume", "through", "repeats", "stir_time", "stir_speed", "settling_time"}},
-        {"Transfer", new(){"from_vessel", "to_vessel", "volume", "amount", "time", "viscous", "rinsing_solvent", "rinsing_volume", "rinsing_repeats", "solid"}},
-        {"StartStir", new(){"vessel", "stir_speed", "purpose"}},
-        {"Stir", new(){"vessel", "time", "stir_speed", "continue_stirring", "purpose"}},
-        {"StopStir", new(){"vessel"}},
-        {"HeatChill", new(){"vessel", "temp", "time", "stir", "stir_speed", "purpose"}},
-        {"HeatChillToTemp", new(){"vessel", "temp", "active", "continue_heatchill", "stir", "stir_speed", "purpose"}},
-        {"StartHeatChill", new(){"vessel", "temp", "purpose"}},
-        {"StopHeatChill", new(){"vessel"}},
-        {"EvacuateAndRefill", new(){"vessel", "gas", "repeats"}},
-        {"Purge", new(){"vessel", "gas", "time", "pressure", "flow_rate"}},
-        {"StartPurge", new(){"vessel", "gas", "pressure", "flow_rate"}},
-        {"StopPurge", new(){"vessel"}},
-        {"Filter", new(){"vessel", "filtrate_vessel", "stir", "stir_speed", "temp", "continue_heatchill", "volume"}},
-        {"FilterThrough", new(){"from_vessel", "to_vessel", "through", "eluting_solvent", "eluting_volume", "eluting_repeats", "residence_time"}},
-        {"WashSolid", new(){"vessel", "solvent", "volume", "filtrate_vessel", "temp", "stir", "stir_speed", "time", "repeats"}},
-        {"Wait", new(){"time"}},
-        {"Repeat", new(){"repeats", "children", "loop_variables", "iterative"}},
-        {"CleanVessel", new(){"vessel", "solvent", "volume", "temp", "repeats"}},
-        {"Crystallize", new(){"vessel", "ramp_time", "ramp_temp"}},
-        {"Dissolve", new(){"vessel", "solvent", "volume", "amount", "temp", "time", "stir_speed"}},
-        {"Dry", new(){"vessel", "time", "pressure", "temp", "continue_heatchill"}},
-        {"Evaporate", new(){"vessel", "time", "pressure", "temp", "stir_speed"}},
-        {"Irradiate", new(){"vessel", "time", "wavelegth", "color", "temp", "stir", "stir_speed", "cooling_power"}},
-        {"Precipitate", new(){"vessel", "time", "temp", "stir_speed", "reagent", "volume", "amount", "add_time"}},
-        {"ResetHandling", new(){"solvent", "volume", "repeats"}},
-        {"RunColumn", new(){"from_vessel", "to_vessel", "column"}},
-        {"RunCV", new(){}},
-        {"Monitor", new(){"vessel", "quantity"}}
+        // ======= 物质操作类 =======
+        {"Add", new(){"vessel", "reagent", "tool", "mass","volume", "temperature", "rate", "order", "stirring", "note"}},
+        {"Insert", new(){ "tool", "vessel", "purpose", "depth", "angle", "alignment", "note"}},
+        {"Attach", new(){"vessel", "support", "method","position", "force", "angle", "release_time", "note"}},
+        {"Transfer", new(){"from_vessel", "to_vessel", "volume", "tool", "speed", "temperature", "cover", "note"}},
+
+        // ======= 过程控制类 =======
+        {"Stir", new(){"vessel", "time", "tool", "speed", "direction", "interval", "auto_stop", "note"}},
+        {"Heat", new(){"vessel", "temp", "time", "device", "mode", "ramp_rate", "cooling", "target_sensor", "note"}},
+        {"Wait", new(){"time", "reason", "tool", "condition", "until", "note"}},
     };
+
 
     private static readonly List<string> reagent_properties = new()
     {"name", "inchi", "cas", "role", "preserve", "use_for_cleaning", "clean_with", "stir", "temp", "atmosphere", "purity"};
@@ -242,7 +200,7 @@ public static class Verify
                     }
 
                     // vessel 检查
-                    foreach (string v in new[] { "vessel", "from_vessel", "to_vessel" })
+                    foreach (string v in new[] { "vessel", "from_vessel", "to_vessel","tool", "support" })
                     {
                         if (step.Attributes?[v] != null && !hardware.Contains(step.Attributes[v].Value))
                             errs.Add($"{step.Attributes[v].Value} is not defined in Hardware.");

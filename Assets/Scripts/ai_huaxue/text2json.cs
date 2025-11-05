@@ -72,7 +72,7 @@ public class text2json : MonoBehaviour
         // 获取文件夹下的所有文件路径
         string[] files = Directory.GetFiles(folderPath);
 
-        foreach (var file in files.Skip(172))
+        foreach (var file in files.Skip(14))
         {
             await ProcessJsonFileAsync(file);
             //break; // 只处理第一个文件进行测试

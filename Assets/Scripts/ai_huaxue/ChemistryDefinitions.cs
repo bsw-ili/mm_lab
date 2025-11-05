@@ -207,10 +207,10 @@ public static class ChemistryDefinitions
             { "contains_liquid", "The funnel contains liquid" },
             { "in_use", "The funnel is being used for separation" }
         }},
-        { "iron_clamp", new Dictionary<string, string>{
-            { "holding_object", "The clamp is holding an object" },
-            { "empty", "The clamp is idle" }
-        }},
+        //{ "iron_clamp", new Dictionary<string, string>{
+        //    { "holding_object", "The clamp is holding an object" },
+        //    { "empty", "The clamp is idle" }
+        //}},
         { "ring_clamp", new Dictionary<string, string>{
             { "holding_object", "The ring is holding a container" },
             { "empty", "The ring is idle" }
@@ -829,13 +829,13 @@ public static class ChemistryDefinitions
                 {"barrel_center", "Located along the cylindrical barrel — holds the liquid and usually has volume markings.（位于注射器筒体中部，用于容纳液体，通常带有刻度标记。）"}
             }
         },
-        {
-            "iron_rod", new Dictionary<string, string>{
-                {"tip_end", "Located at one end of the rod — often used for striking, stirring, or contact with other materials.（位于铁棒的一端，用于敲击、搅拌或与其他材料接触。）"},
-                {"middle_section", "Located along the central length of the rod — used for gripping or supporting during experiments.（位于铁棒中部，用于握持或支撑实验操作。）"},
-                {"bottom_end", "Located at the opposite end of the tip — can also serve as a support or handling point.（位于铁棒的另一端，可用作支撑或手持端。）"}
-            }
-        },
+        //{
+        //    "iron_rod", new Dictionary<string, string>{
+        //        {"tip_end", "Located at one end of the rod — often used for striking, stirring, or contact with other materials.（位于铁棒的一端，用于敲击、搅拌或与其他材料接触。）"},
+        //        {"middle_section", "Located along the central length of the rod — used for gripping or supporting during experiments.（位于铁棒中部，用于握持或支撑实验操作。）"},
+        //        {"bottom_end", "Located at the opposite end of the tip — can also serve as a support or handling point.（位于铁棒的另一端，可用作支撑或手持端。）"}
+        //    }
+        //},
 
         {
             "ammeter", new Dictionary<string, string>{
@@ -922,10 +922,10 @@ public static class ChemistryDefinitions
             }
         },
 
-        { "iron_clamp", new Dictionary<string, string> {
-            { "clamp_center", "The center point between the two jaws of the clamp (the area that clamps the experimental equipment)" },
-            { "attachment_point", "The place where the tail of the iron clamp is connected to the upright pole of the iron frame is usually fixed with screws." }
-        }},
+        //{ "iron_clamp", new Dictionary<string, string> {
+        //    { "clamp_center", "The center point between the two jaws of the clamp (the area that clamps the experimental equipment)" },
+        //    { "attachment_point", "The place where the tail of the iron clamp is connected to the upright pole of the iron frame is usually fixed with screws." }
+        //}},
         {
             "ring_clamp", new Dictionary<string, string> {
                 { "ring_center", "Located at the geometric center of the ring — represents the primary support area used to hold flasks, funnels, or wire gauze during experiments." },
