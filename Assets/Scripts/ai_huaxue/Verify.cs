@@ -1,11 +1,13 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Xml;
 using UnityEngine;
+using System.Text.RegularExpressions;
+using System.Linq;
 
 public static class Verify
 {
-    // ======= ºËĞÄÊôĞÔ¶¨Òå =======
+    // ======= æ ¸å¿ƒå±æ€§å®šä¹‰ =======
     private static readonly Dictionary<string, List<string>> mandatory_properties = new()
     {
         {"Add", new(){"vessel", "reagent","tool"}},
@@ -19,30 +21,29 @@ public static class Verify
 
     private static readonly Dictionary<string, List<string>> optional_properties = new()
     {
-        // ======= ÎïÖÊ²Ù×÷Àà =======
+        // ======= ç‰©è´¨æ“ä½œç±» =======
         {"Add", new(){"vessel", "reagent", "tool", "mass","volume", "temperature", "rate", "order", "stirring", "note"}},
         {"Insert", new(){ "tool", "vessel", "purpose", "depth", "angle", "alignment", "note"}},
-        {"Attach", new(){"vessel", "support", "method","position", "force", "angle", "release_time", "note"}},
+        {"Attach", new(){"vessel", "support", "tool", "method","position", "force", "angle", "release_time", "note"}},
         {"Transfer", new(){"from_vessel", "to_vessel", "volume", "tool", "speed", "temperature", "cover", "note"}},
 
-        // ======= ¹ı³Ì¿ØÖÆÀà =======
+        // ======= è¿‡ç¨‹æ§åˆ¶ç±» =======
         {"Stir", new(){"vessel", "time", "tool", "speed", "direction", "interval", "auto_stop", "note"}},
         {"Heat", new(){"vessel", "temp", "time", "device", "mode", "ramp_rate", "cooling", "target_sensor", "note"}},
         {"Wait", new(){"time", "reason", "tool", "condition", "until", "note"}},
     };
 
-
     private static readonly List<string> reagent_properties = new()
     {"name", "inchi", "cas", "role", "preserve", "use_for_cleaning", "clean_with", "stir", "temp", "atmosphere", "purity"};
 
-    // ´íÎó½á¹¹Ìå
+    // é”™è¯¯ç»“æ„ä½“
     public class VerifyError
     {
         public string step;
         public List<string> errors;
     }
 
-    // ========== Ö÷Èë¿Ú ==========
+    // ========== ä¸»å…¥å£ ==========
     public static List<VerifyError> VerifyXDL(string xdl, List<string> availableHardware = null, List<string> availableReagents = null)
     {
         var errorList = new List<VerifyError>();
@@ -68,7 +69,7 @@ public static class Verify
             return errorList;
         }
 
-        // ÑéÖ¤ Hardware, Reagents, Procedure
+        // éªŒè¯ Hardware, Reagents, Procedure
         var (hardwareList, hwErrors) = ParseHardware(root, availableHardware);
         errorList.AddRange(hwErrors);
 
@@ -92,26 +93,46 @@ public static class Verify
         {
             foreach (XmlNode comp in hw.ChildNodes)
             {
+                var errs = new List<string>();
+
                 if (comp.Name != "Component")
                 {
+                    errs.Add("The Hardware section should only contain Component tags.");
                     errors.Add(new VerifyError
                     {
                         step = "Hardware definition",
-                        errors = new List<string> { "The Hardware section should only contain Component tags." }
+                        errors = errs
                     });
                     continue;
                 }
 
-                if (comp.Attributes?["id"] == null) continue;
-                string id = comp.Attributes["id"].Value;
-                hardwareList.Add(id);
+                // ===== æ£€æŸ¥ id =====
+                if (comp.Attributes?["id"] == null)
+                {
+                    errs.Add("Missing 'id' property in Component.");
+                }
+                else
+                {
+                    string id = comp.Attributes["id"].Value;
+                    string baseId = NormalizeHardwareId(id);
+                    hardwareList.Add(baseId);
 
-                if (available != null && !available.Contains(id))
+                    if (available != null && !available.Contains(baseId))
+                        errs.Add($"{id} (base: {baseId}) is not defined in available hardware list:{string.Join(",", available)}.");
+                }
+
+                // ===== æ£€æŸ¥ contains =====
+                if (comp.Attributes?["contains"] == null)
+                {
+                    errs.Add($"Missing 'contains' property in Component (required). Use 'empty' if no reagents are present.");
+                }
+
+                if (errs.Count > 0)
                 {
                     errors.Add(new VerifyError
                     {
-                        step = "Hardware definition",
-                        errors = new List<string> { $"{id} is not defined in available hardware list." }
+                        step = comp.OuterXml,
+                        errors = errs
                     });
                 }
             }
@@ -139,7 +160,7 @@ public static class Verify
                 reagentList.Add(name);
 
                 if (available != null && !available.Contains(name))
-                    errs.Add($"{name} is not defined in available reagents list.");
+                    errs.Add($"{name} is not defined in available reagents list:{string.Join(",", available)}.");
             }
 
             foreach (XmlAttribute attr in reagent.Attributes)
@@ -167,61 +188,144 @@ public static class Verify
         var errors = new List<VerifyError>();
         var procedures = root.GetElementsByTagName("Procedure");
 
+        // å›ºä½“ä¸æ¶²ä½“è¯•å‰‚åˆ†ç±»ï¼Œå¯æ ¹æ®å®é™…æƒ…å†µä¿®æ”¹
+        var liquidReagents = ChemistryDefinitions.allowedLiquids_dict.Keys.ToList();
+        var solidReagents = ChemistryDefinitions.allowedSolids_dict.Keys.ToList();
+
+        HashSet<string> hardwareActions = new() { "Attach", "Insert" };
+        HashSet<string> operationActions = new() { "Add", "Transfer", "Stir", "Heat", "Wait" };
+        bool enteredOperationStage = false;
+
         foreach (XmlNode proc in procedures)
         {
-            foreach (XmlNode step in proc.ChildNodes)
+            foreach (XmlNode stage in proc.ChildNodes)
             {
-                var errs = new List<string>();
-                string action = step.Name;
-
-                if (!mandatory_properties.ContainsKey(action))
-                {
-                    errs.Add($"There is no {action} action in XDL.");
-                }
-                else
-                {
-                    // ±ØÒªÊôĞÔ
-                    foreach (string prop in mandatory_properties[action])
-                    {
-                        if (step.Attributes?[prop] == null)
-                            errs.Add($"You must have '{prop}' property when doing '{action}'.");
-                    }
-
-                    // ·Ç·¨ÊôĞÔ
-                    foreach (XmlAttribute attr in step.Attributes)
-                    {
-                        if (!optional_properties[action].Contains(attr.Name))
-                        {
-                            var allowed = new HashSet<string>(optional_properties[action]);
-                            foreach (var p in mandatory_properties[action]) allowed.Add(p);
-                            string allowedStr = allowed.Count > 0 ? string.Join(", ", allowed) : "none";
-                            errs.Add($"The {attr.Name} property in {action} is not allowed. Allowed: {allowedStr}");
-                        }
-                    }
-
-                    // vessel ¼ì²é
-                    foreach (string v in new[] { "vessel", "from_vessel", "to_vessel","tool", "support" })
-                    {
-                        if (step.Attributes?[v] != null && !hardware.Contains(step.Attributes[v].Value))
-                            errs.Add($"{step.Attributes[v].Value} is not defined in Hardware.");
-                    }
-
-                    // reagent ¼ì²é
-                    if (step.Attributes?["reagent"] != null && !reagents.Contains(step.Attributes["reagent"].Value))
-                        errs.Add($"{step.Attributes["reagent"].Value} is not defined in Reagents.");
-                }
-
-                if (errs.Count > 0)
+                if (stage.Name != "Stage")
                 {
                     errors.Add(new VerifyError
                     {
-                        step = step.OuterXml.Replace("\n", " "),
-                        errors = errs
+                        step = stage.OuterXml,
+                        errors = new List<string> { "Only <Stage> elements are allowed inside <Procedure>." }
                     });
+                    continue;
+                }
+
+                string stageType = stage.Attributes?["type"]?.Value ?? "";
+                if (stageType != "hardware" && stageType != "operation")
+                {
+                    errors.Add(new VerifyError
+                    {
+                        step = stage.OuterXml,
+                        errors = new List<string> { "Stage must have type='hardware' or type='operation'." }
+                    });
+                    continue;
+                }
+
+                if (stageType == "operation")
+                    enteredOperationStage = true;
+                else if (stageType == "hardware" && enteredOperationStage)
+                {
+                    errors.Add(new VerifyError
+                    {
+                        step = stage.OuterXml,
+                        errors = new List<string> { "Hardware Stage cannot appear after Operation Stage." }
+                    });
+                }
+
+                foreach (XmlNode step in stage.ChildNodes)
+                {
+                    string action = step.Name;
+                    var errs = new List<string>();
+
+                    // æ£€æŸ¥åŠ¨ä½œæ˜¯å¦åœ¨å½“å‰é˜¶æ®µå…è®¸
+                    if (stageType == "hardware" && !hardwareActions.Contains(action))
+                        errs.Add($"Action '{action}' is not allowed in hardware stage.");
+                    if (stageType == "operation" && !operationActions.Contains(action))
+                        errs.Add($"Action '{action}' is not allowed in operation stage.");
+
+                    // åŠ¨ä½œå­˜åœ¨æ€§
+                    if (!mandatory_properties.ContainsKey(action))
+                    {
+                        errs.Add($"Unknown action '{action}' in procedure.");
+                    }
+                    else
+                    {
+                        // å¿…è¦å±æ€§
+                        foreach (string prop in mandatory_properties[action])
+                        {
+                            if (step.Attributes?[prop] == null)
+                                errs.Add($"You must have '{prop}' property when doing '{action}'.");
+                        }
+
+                        // éæ³•å±æ€§
+                        foreach (XmlAttribute attr in step.Attributes)
+                        {
+                            if (!optional_properties[action].Contains(attr.Name))
+                            {
+                                var allowed = new HashSet<string>(optional_properties[action]);
+                                foreach (var p in mandatory_properties[action]) allowed.Add(p);
+                                string allowedStr = string.Join(", ", allowed);
+                                errs.Add($"The {attr.Name} property in {action} is not allowed. Allowed: {allowedStr}");
+                            }
+                        }
+
+                        // vessel/tool/support æ£€æŸ¥
+                        foreach (string v in new[] { "vessel", "from_vessel", "to_vessel", "tool", "support" })
+                        {
+                            if (step.Attributes?[v] != null)
+                            {
+                                string baseId = NormalizeHardwareId(step.Attributes[v].Value);
+                                if (!hardware.Contains(baseId))
+                                    errs.Add($"{step.Attributes[v].Value} (base: {baseId}) is not defined in Hardware.");
+                            }
+                        }
+
+                        // reagent æ£€æŸ¥
+                        if (step.Attributes?["reagent"] != null && !reagents.Contains(step.Attributes["reagent"].Value))
+                            errs.Add($"{step.Attributes["reagent"].Value} is not defined in Reagents.");
+
+                        // === Add æ“ä½œæ—¶çš„ tool åˆæ³•æ€§æ£€æŸ¥ ===
+                        if (action == "Add" && step.Attributes?["reagent"] != null && step.Attributes?["tool"] != null)
+                        {
+                            string reagent = step.Attributes["reagent"].Value;
+                            string tool = step.Attributes["tool"].Value;
+                            tool = NormalizeHardwareId(tool);
+                            if (solidReagents.Contains(reagent))
+                            {
+                                if (tool != "spatula")
+                                    errs.Add($"When adding solid reagent '{reagent}', you must use 'spatula' as the tool.");
+                            }
+                            else if (liquidReagents.Contains(reagent))
+                            {
+                                if (tool != "dropper" && tool != "graduated_cylinder")
+                                    errs.Add($"When adding liquid reagent '{reagent}', you must use 'dropper' or 'graduated_cylinder' as the tool.");
+                            }
+                            else
+                            {
+                                errs.Add($"Reagent '{reagent}' is not categorized as solid or liquid; please update the reagent list.");
+                            }
+                        }
+                    }
+
+                    if (errs.Count > 0)
+                    {
+                        errors.Add(new VerifyError
+                        {
+                            step = step.OuterXml.Replace("\n", " "),
+                            errors = errs
+                        });
+                    }
                 }
             }
         }
 
         return errors;
+    }
+
+
+    // ========== å·¥å…·å‡½æ•°ï¼šå»é™¤ç¼–å· ==========
+    private static string NormalizeHardwareId(string id)
+    {
+        return Regex.Replace(id, @"[_\-]?\d+$", "");
     }
 }
