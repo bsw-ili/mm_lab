@@ -165,27 +165,27 @@ public class XDLGenerator : MonoBehaviour
 
 
     // ✅ 示例运行
-    async void Start()
-    {
-        string inputFile = "Assets\\Scripts\\ai_huaxue\\exp0.txt";
-        var allowedHardware = ChemistryDefinitions.AnchorDict.Keys.ToList();
-        var liquidList = ChemistryDefinitions.allowedLiquids_dict.Keys.ToList();
-        var solidList = ChemistryDefinitions.allowedSolids_dict.Keys.ToList();
-        var allowedReagents = new List<string>();
-        allowedReagents.AddRange(liquidList);
-        allowedReagents.AddRange(solidList);
-        string XDL_description_build = "Assets\\Scripts\\ai_huaxue\\xdl_description_build.txt";
-        var (ok, xdl_build, errors) = await GenerateXDL(inputFile, XDL_description_build, allowedHardware, allowedReagents);
+    //async void Start()
+    //{
+    //    string inputFile = "Assets\\Scripts\\ai_huaxue\\exp0.txt";
+    //    var allowedHardware = ChemistryDefinitions.AnchorDict.Keys.ToList();
+    //    var liquidList = ChemistryDefinitions.allowedLiquids_dict.Keys.ToList();
+    //    var solidList = ChemistryDefinitions.allowedSolids_dict.Keys.ToList();
+    //    var allowedReagents = new List<string>();
+    //    allowedReagents.AddRange(liquidList);
+    //    allowedReagents.AddRange(solidList);
+    //    string XDL_description_build = "Assets\\Scripts\\ai_huaxue\\xdl_description_build.txt";
+    //    var (ok, xdl_build, errors) = await GenerateXDL(inputFile, XDL_description_build, allowedHardware, allowedReagents);
 
-        if (ok)
-            Debug.Log($"✅ 生成成功：\n{xdl_build}");
-        else
-            Debug.LogWarning($"❌ 生成失败：\n{xdl_build}");
+    //    if (ok)
+    //        Debug.Log($"✅ 生成成功：\n{xdl_build}");
+    //    else
+    //        Debug.LogWarning($"❌ 生成失败：\n{xdl_build}");
 
-        // 保存结果
-        File.WriteAllText("Assets\\Scripts\\ai_huaxue\\result_xdl.txt", xdl_build);
-        File.WriteAllText("Assets\\Scripts\\ai_huaxue\\errors.json", JsonConvert.SerializeObject(errors, Formatting.Indented));
-    }
+    //    // 保存结果
+    //    File.WriteAllText("Assets\\Scripts\\ai_huaxue\\result_xdl.txt", xdl_build);
+    //    File.WriteAllText("Assets\\Scripts\\ai_huaxue\\errors.json", JsonConvert.SerializeObject(errors, Formatting.Indented));
+    //}
 }
 
 /// <summary>

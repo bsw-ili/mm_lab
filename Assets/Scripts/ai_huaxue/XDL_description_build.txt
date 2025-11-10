@@ -7,27 +7,39 @@ Reagents, where all reagents that are used in the procedure are declared.
 Procedure, where all experimental actions are defined, is organized into two stages: the first involves hardware manipulation, in which the experimental setup is assembled and secured using actions such as Attach or Assemble; the second involves experimental operations, where chemical or physical actions such as Add, Heat, or Transfer are performed. This structured sequence ensures that the setup is fully constructed before any experimental operations are executed.
 
 XDL File Stub:
+<?xml version="1.0" encoding="UTF-8"?>
 <XDL>
-  <Synthesis>  
+  <Synthesis>
+
     <Hardware>
-        <!-- ... -->
+      <!-- Declare all experimental hardware and vessels here -->
+      <!-- Example:
+      <Vessel id="beaker1" type="beaker" volume="250mL"/>
+      -->
     </Hardware>
-  
+
     <Reagents>
-        <!-- ... -->
+      <!-- Declare all reagents used in the procedure here -->
+      <!-- Example:
+      <Reagent id="NaCl" state="solid"/>
+      -->
     </Reagents>
-  
+
     <Procedure>
       <Stage type="hardware">
-        <!-- ... -->
+        <!-- Hardware manipulation stage -->
+        <!-- Define setup and assembly actions such as Attach or Insert -->
       </Stage>
 
       <Stage type="operation">
-        <!-- ... -->
+        <!-- Experimental operation stage -->
+        <!-- Define chemical or physical actions such as Add, Heat, or Stir -->
       </Stage>
     </Procedure>
+
   </Synthesis>
 </XDL>
+
 
 Hardware:
 Each individual reagent, unless otherwise stated should be contained within their own components. The Hardware section should only contain Component tags.
@@ -35,6 +47,7 @@ Each individual reagent, unless otherwise stated should be contained within thei
 (format is(Property, Type, Description))
 
 id, str, Name of hardware
+
 contains, reagent, Reagent contained in the vessel before any operation. Generally empty unless it is certain that the reagent is initially present.
 
 Reagents:
@@ -48,6 +61,8 @@ Reagent used by procedure.
 
 name, str, Name of reagent
 
+state, str, - State of the reagent (liquid or solid).
+
 Procedure:
 All steps included in the Full Steps Specification may be given within the Procedure block of a XDL file. 
 
@@ -56,8 +71,11 @@ Here is a list of tags that can be used in this language:
 Hardware Manipulate: Attach, Insert
 Reagents Manipulate: Add, Transfer
 Stirring: Stir
-Temperature Control: Heat,cool
-Special: Wait,
+Temperature Control: Heat,Cool
+Special: Wait
+Measurement: MeasureTemperature, MeasureMass
+Separation: Filter,CollectGas
+Observation: Observe
 
 XDL Operation Specification (Steps)
 =================================
@@ -119,10 +137,10 @@ Properties:
     from_vessel (vessel) - Source vessel.
     to_vessel (vessel) - Destination vessel.
     volume (float) - Volume to transfer.
-    tool (component) - Tool used for transfer (pump, syringe, funnel).
+    tool (component) - Tool used for transfer (beaker).
 
 Example:
-    <Transfer from_vessel="flask_1" to_vessel="funnel_1" tool="pump_1" />
+    <Transfer from_vessel="flask_1" to_vessel="funnel_1" tool="beaker_1" />
 
 ------------------------------------------------------------
 3. Stirring
@@ -183,7 +201,7 @@ Example:
     <Wait time="10 min"/>
 
 ------------------------------------------------------------
-Measurement
+6. Measurement
 ------------------------------------------------------------
 6.1 MeasureTemperature
 
@@ -199,6 +217,8 @@ Example:
 
 <MeasureTemperature vessel="flask_1" tool="thermometer_1"/>
 
+------------------------------------------------------------
+
 6.2 MeasureMass
 
 Description:
@@ -212,3 +232,55 @@ Properties:
 Example:
 
 <MeasureMass reagent="NaCl" tool="balance_1"/>
+
+------------------------------------------------------------
+
+7. Separation
+
+7.1 Filter
+
+Description:
+    Separate solids from liquids using a filtration setup.
+
+Properties:
+    from_vessel (vessel) - Source vessel containing the mixture.
+    to_vessel (vessel) - Vessel to collect the filtrate.
+    tool (component) - Filtration tool (filter_paper, funnel).
+
+Example:
+
+<Filter from_vessel="beaker_1" to_vessel="flask_2" tool="filter_paper_1"/>
+
+------------------------------------------------------------
+
+7.2 CollectGas
+
+Description:
+    Collect gas produced during a reaction using a specified method (e.g., water displacement or upward delivery).
+
+Properties:
+    source_vessel (vessel) - Reaction vessel producing the gas.
+    collector (vessel) - Vessel used to collect the gas (gas_jar, measuring_cylinder).
+    method (string) - Gas collection method (water_displacement, upward_delivery, downward_delivery).
+
+Example:
+
+<CollectGas source_vessel="flask_1" method="water_displacement" collector="gas_jar_1"/>
+
+------------------------------------------------------------
+
+8. Observation
+
+8.1 Observe
+
+Description:
+    Observe and record the visible phenomena occurring in the experiment, such as color changes, gas generation, or precipitate formation.
+
+Properties:
+    vessel (vessel) - Vessel where the observation is made.
+    phenomenon (string, optional) - Description of the observed phenomenon (e.g., “color changed to blue”, “bubbles formed”).
+
+Example:
+
+<Observe vessel="flask_1" phenomenon="bubbles formed"/>
+

@@ -180,4 +180,87 @@ public class OpenAIExtractor : MonoBehaviour
 
         return "无操作文本";
     }
+
+    /// <summary>
+    /// 异步翻译化学实验分析文本为英文
+    public async Task<string> TranslateToEnglish(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            Debug.LogWarning("⚠️ 翻译输入为空。");
+            return "";
+        }
+
+        string prompt = BuildTranslationPrompt(input);
+        ChatRequest requestData = new ChatRequest
+        {
+            model = "gpt-4.1-mini",
+            messages = new ChatMessage[]
+            {
+            new ChatMessage
+            {
+                role = "system",
+                content = "You are a professional English translator specialized in chemistry experiments."
+            },
+            new ChatMessage
+            {
+                role = "user",
+                content = prompt
+            }
+            },
+            max_tokens = 1024
+        };
+
+        string jsonBody = JsonConvert.SerializeObject(requestData);
+
+        try
+        {
+            using (UnityWebRequest www = new UnityWebRequest(apiUrl, "POST"))
+            {
+                byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+                www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                www.downloadHandler = new DownloadHandlerBuffer();
+                www.SetRequestHeader("Content-Type", "application/json");
+                www.SetRequestHeader("Authorization", $"Bearer {apiKey}");
+
+                await www.SendWebRequest();
+
+                if (www.result == UnityWebRequest.Result.Success)
+                {
+                    string responseText = www.downloadHandler.text;
+                    string translation = ParseResponse(responseText);
+                    Debug.Log("🌍 翻译成功: " + translation);
+                    return translation;
+                }
+                else
+                {
+                    Debug.LogError($"❌ 翻译请求失败: {www.result}\n{www.error}\n{www.downloadHandler.text}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"❌ TranslateToEnglish 异常: {ex.Message}");
+        }
+
+        return "";
+    }
+
+    /// <summary>
+    /// 构建翻译提示词
+    /// </summary>
+    private static string BuildTranslationPrompt(string input)
+    {
+        return $@"
+    Translate the following chemistry experiment analysis text into fluent and precise English.
+    The translation should preserve all chemical terms, apparatus names, and logical relations clearly.
+
+    【Input】:
+    {input}
+
+    【Output】:
+    (Only provide the translated English text without any explanation)
+    ";
+        }
+
 }

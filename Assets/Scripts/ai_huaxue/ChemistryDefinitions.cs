@@ -535,7 +535,7 @@ public static class ChemistryDefinitions
             { "top_rim", "The center point of the beaker's upper rim (the highest point on the rim's circumference)" },
             { "body_center", "The geometric center of the beaker" }
         }},
-        { "rubber_stopper_with_tube", new Dictionary<string, string> {
+        { "rubber_stopper_with_delivery_tube", new Dictionary<string, string> {
             { "stopper_bottom_center", "Center of the bottom of the rubber stopper (the end that inserts into the mouth of the test tube)" },
             { "tube_exit_port", "The open end of the delivery tube where gas or liquid exits or connects to another apparatus" },
             { "tube_bend_joint", "The point where the delivery tube bends or curves, often used to guide or support the tube's direction in the setup" }
@@ -758,10 +758,13 @@ public static class ChemistryDefinitions
             { "gas_inlet", "Located at the side or bottom connection — where the gas hose attaches to supply fuel." }
         }},
 
-        {"tripod_stand", new Dictionary<string, string> {
-            { "bottom_center", "The center of the tripod bottom - serves as the overall placement and force reference point" },
-            { "top_center", "Support platform center - used to place equipment or support experimental devices" }
-        }},
+        {
+            "tripod_stand", new Dictionary<string, string>{
+                {"bottom_center", "Located at the geometric center of the tripod’s base, directly under the top platform — used for placing a spirit lamp or other heating source.（位于三脚架底部的几何中心，正对上方支撑台面，用于放置酒精灯或加热装置。）"},
+                {"top_center", "Located at the center of the top circular or mesh support platform — used to place beakers, flasks, or other containers for heating.（位于三脚架上部圆形或网状支撑台的中心，用于放置烧杯、烧瓶等受热容器。）"}
+            }
+        },
+
         { "wire_gauze", new Dictionary<string, string> {
             { "center", "Located at the geometric center of the mesh — represents the main heating area above the flame." },
         }},
@@ -906,7 +909,8 @@ public static class ChemistryDefinitions
 
         { "retort_stand", new Dictionary<string, string> {
              { "base_center", "Located at the geometric center of the flat base plate of the retSyringeort stand, serving as the placement reference point.（位于铁架台底板的几何中心，用作放置参考点）" },
-             { "clamp_center", "Located at the tips of the clamp arms, used to hold laboratory apparatus such as test tubes or flasks.（位于铁夹前端，用于夹持试管、烧瓶等器材）" }
+             { "clamp_center", "Located at the tips of the clamp arms, used to hold laboratory apparatus such as test tubes .（位于铁夹前端，用于夹持试管、烧瓶等器材）" },
+             { "support_place", "Located at the geometric center of the top surface of an adjustable lab-jack platform attached to the stand. This anchor represents the primary contact/load point for placing a beaker; it is height-adjustable (moves on the jack's vertical axis), its normal is aligned with the stand's local upward direction, and it should be used as the beaker's placement and support reference.（位于附在铁架台上的可升降台（lab jack）顶面几何中心。该锚点表示放置烧杯的主要接触/受力点；可沿竖直轴升降，法线与支架本地向上方向一致，作为烧杯定位与支撑参考。）" }
         }},
         { "ground_glass_plate", new Dictionary<string, string> {
             { "top_center", "top surface center" },
@@ -1617,27 +1621,28 @@ public static class ChemistryDefinitions
     };
 
     public static readonly Dictionary<string, string> allowedLiquids_dict = new Dictionary<string, string> {
-    { "water", "#FFFFFF00" },                  // colorless
-    { "ethanol", "#FFFFFF00" },
-    { "hydrochloric_acid", "#FFFFFF00" },
-    { "sulfuric_acid", "#FFFFFF00" },
-    { "nitric_acid", "#FFFFFF00" },
-    { "ammonia_solution", "#FFFFFF00" },
-    { "sodium_hydroxide_solution", "#FFFFFF00" },
-    { "limewater", "#FFFFFF00" },
-    { "carbonic_acid_solution", "#FFFFFF00" },
-    { "silver_nitrate_solution", "#FFFFFF00" },
-    { "lead_nitrate_solution", "#FFFFFF00" },
-    { "copper_sulfate_solution", "#3399FF" },
-    { "iron_ii_sulfate_solution", "#99CC66" },
-    { "potassium_permanganate_solution", "#9933FF" },
-    { "cobalt_chloride_solution", "#3366FF" },
-    { "bromine_water", "#FFA500" },           // orange
-    { "iodine_solution", "#996633" },
-    { "phenolphthalein_solution", "#FFC0CB" }, // pink in alkali
-    { "ferric_chloride_solution", "#A52A2A" }, // yellow_brown
-    { "potassium_dichromate_solution", "#FFA500" } // orange
+    { "water", "#ADD8E6B3" },                 // light blue, 半透明
+    { "ethanol", "#E0FFFFB3" },               // pale cyan
+    { "hydrochloric_acid", "#FFB6C1B3" },     // light pink
+    { "sulfuric_acid", "#FFD700B3" },         // gold-ish
+    { "nitric_acid", "#FFA07AB3" },           // light salmon
+    { "ammonia_solution", "#98FB98B3" },      // pale green
+    { "sodium_hydroxide_solution", "#87CEEBB3" }, // sky blue
+    { "limewater", "#32CD32B3" },             // lime green
+    { "carbonic_acid_solution", "#F0E68CB3" },// khaki
+    { "silver_nitrate_solution", "#C0C0C0B3" },// grayish
+    { "lead_nitrate_solution", "#D8BFD8B3" }, // thistle
+    { "copper_sulfate_solution", "#3399FFB3" },// retain original
+    { "iron_ii_sulfate_solution", "#99CC66B3" },
+    { "potassium_permanganate_solution", "#9933FFB3" },
+    { "cobalt_chloride_solution", "#3366FFB3" },
+    { "bromine_water", "#FFA500B3" },         // orange
+    { "iodine_solution", "#996633B3" },
+    { "phenolphthalein_solution", "#FF69B4B3" }, // pink in alkali
+    { "ferric_chloride_solution", "#A52A2AB3" }, // yellow_brown
+    { "potassium_dichromate_solution", "#FFA500B3" } // orange
 };
+
 
     public static readonly Dictionary<string, string> allowedSolids_dict = new Dictionary<string, string> {
     { "sodium_chloride", "#FFFFFF" },         // white
