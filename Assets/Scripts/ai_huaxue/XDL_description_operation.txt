@@ -1,0 +1,122 @@
+XDL files will follow XML syntax and consist of three mandatory sections: Hardware, where virtual vessels that the reaction mixture can reside in are declared. Reagents, where all reagents that are used in the procedure are declared, and Procedure, where the synthetic actions involved in the procedure are linearly declared.
+
+XDL File Stub:
+<XDL>
+  <Synthesis>  
+    <Hardware>
+        <!-- ... -->
+    </Hardware>
+  
+    <Reagents>
+        <!-- ... -->
+    </Reagents>
+  
+    <Procedure>
+        <!-- ... -->
+    </Procedure>
+  </Synthesis>
+</XDL>
+
+Hardware:
+Each individual reagent, unless otherwise stated should be contained within their own components. The Hardware section should only contain Component tags.
+
+(format is(Property, Type, Description))
+
+id, str, Name of hardware
+
+Reagents:
+The Reagents section contains Reagent elements with the props below.
+Any reagents which were combined before the experiment should be combined as one reagent before the procedure. (i.e. 'lime juice mixed with sugar' = <Reagent name='lime juice mixed with sugar')
+
+Reagent:
+Reagent used by procedure.
+
+(format is(Property, Type, Description))
+
+name, str, Name of reagent
+
+Procedure:
+All steps included in the Full Steps Specification may be given within the Procedure block of a XDL file. 
+
+
+Here is a list of tags that can be used in this language:
+Reagents Manipulate: Add, Transfer, 
+Stirring: Stir
+Temperature Control: Heat
+Special: Wait,
+
+Steps
+------------------------------------------------------------
+1. Reagents Manipulate
+------------------------------------------------------------
+
+1.1 Add
+Description:
+    Add a reagent (liquid or solid) to a specific vessel.
+
+Properties:
+    vessel (vessel) - Target vessel.
+    reagent (reagent) - Reagent to be added.
+    tool (component) - Tool used for addition (beaker,measuring cylinder,pipette, burette, dispenser).
+
+Example:
+    <Add vessel="flask_1" reagent="acetone" tool="pipette_1" />
+
+------------------------------------------------------------
+
+1.2 Transfer
+Description:
+    Transfer liquid from one vessel to another.
+
+Properties:
+    from_vessel (vessel) - Source vessel.
+    to_vessel (vessel) - Destination vessel.
+    volume (float) - Volume to transfer.
+    tool (component) - Tool used for transfer (pump, syringe, funnel).
+
+Example:
+    <Transfer from_vessel="flask_1" to_vessel="funnel_1" tool="pump_1" />
+
+------------------------------------------------------------
+2. Stirring
+------------------------------------------------------------
+
+2.1 Stir
+Description:
+    Stir the contents of a vessel using a designated tool.
+
+Properties:
+    vessel (vessel) - Vessel to stir.
+    tool (component) - Stirring device (magnetic_stirrer, overhead_stirrer).
+
+Example:
+    <Stir vessel="flask_1" tool="magnetic_stirrer_1" />
+
+------------------------------------------------------------
+3. Temperature Control
+------------------------------------------------------------
+
+3.1 Heat
+Description:
+    Heat a vessel to a specified temperature using a heating device.
+
+Properties:
+    vessel (vessel) - Vessel to heat.
+    tool (component) - Heating device (alcohol_lamp).
+
+Example:
+    <Heat vessel="flask_1" tool="heating_mantle_1" />
+
+------------------------------------------------------------
+4. Special
+------------------------------------------------------------
+
+4.1 Wait
+Description:
+    Pause the process for a specified time or condition.
+
+Properties:
+    time (float) - Duration of wait (min or sec).
+
+Example:
+    <Wait time="10 min"/>

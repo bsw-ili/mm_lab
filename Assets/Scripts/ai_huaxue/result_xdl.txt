@@ -1,0 +1,34 @@
+<XDL>
+  <Synthesis>
+
+    <Hardware>
+      <Component id="test_tube_1" contains="calcium_carbonate"/>
+      <Component id="rubber_stopper_with_delivery_tube_1" contains="empty"/>
+      <Component id="beaker_1" contains="limewater"/>
+      <Component id="tripod_stand_1" contains="empty"/>
+      <Component id="test_tube_holder_1" contains="empty"/>
+      <Component id="dropper_1" contains="empty"/>
+      <Component id="spatula_1" contains="empty"/>
+    </Hardware>
+
+    <Reagents>
+      <Reagent name="calcium_carbonate"/>
+      <Reagent name="limewater"/>
+      <Reagent name="hydrochloric_acid"/>
+    </Reagents>
+
+    <Procedure>
+      <Stage type="hardware">
+        <Attach vessel="test_tube_1" support="tripod_stand_1" tool="test_tube_holder_1"/>
+        <Insert tool="rubber_stopper_with_delivery_tube_1" vessel="test_tube_1"/>
+      </Stage>
+
+      <Stage type="operation">
+        <Add vessel="test_tube_1" reagent="calcium_carbonate" tool="spatula_1"/>
+        <Add vessel="test_tube_1" reagent="hydrochloric_acid" tool="dropper_1"/>
+        <Observe vessel="beaker_1" phenomenon="limewater turns milky"/>
+      </Stage>
+    </Procedure>
+
+  </Synthesis>
+</XDL>

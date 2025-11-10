@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Newtonsoft.Json.Linq;
 using LiquidVolumeFX;
+using System.Xml.Linq;
+using System.Linq;
 /// <summary>
 /// 🧪 实验动作执行器（优化版）
 /// 根据 JSON 动作序列执行虚拟实验操作
@@ -335,7 +337,7 @@ public class ExperimentActionExecutor : MonoBehaviour
             Debug.LogWarning($"对象 {obj.name} 下未找到 Fire 对象");
             yield break;
         }
-
+        fire.SetActive(true);
         fire.GetComponent<ParticleSystem>().Play();
 
         // 4️⃣ 等待粒子系统状态刷新（重要：确保 Transform + 粒子同步）
@@ -385,49 +387,51 @@ public class ExperimentActionExecutor : MonoBehaviour
     /// <summary>
     /// 添加液体（强制刷新 LiquidVolumeFX 显示）
     /// </summary>
-    public void AddLiquid(GameObject obj, string liquidName)
-    {
-        if (obj == null) return;
+    //public void AddLiquid(GameObject obj, string liquidName)
+    //{
+    //    if (obj == null) return;
 
-        // 获取颜色定义
-        if (!ChemistryDefinitions.allowedLiquids_dict.TryGetValue(liquidName, out string colorHex))
-        {
-            Debug.LogWarning($"液体 {liquidName} 未定义，使用默认颜色白色");
-            colorHex = "#FFFFFF";
-        }
+    //    // 获取颜色定义
+    //    if (!ChemistryDefinitions.allowedLiquids_dict.TryGetValue(liquidName, out string colorHex))
+    //    {
+    //        Debug.LogWarning($"液体 {liquidName} 未定义，使用默认颜色白色");
+    //        colorHex = "#FFFFFF";
+    //    }
 
-        if (!ColorUtility.TryParseHtmlString(colorHex, out Color liquidColor))
-            liquidColor = Color.white;
+    //    if (!ColorUtility.TryParseHtmlString(colorHex, out Color liquidColor))
+    //        liquidColor = Color.white;
 
-        // 找到 LiquidVolume 组件
-        Transform liquidObj = obj.transform.Find(LIQUID_PATH);
-        if (liquidObj == null)
-        {
-            Debug.LogWarning($"对象 {obj.name} 下未找到 {LIQUID_PATH}");
-            return;
-        }
+    //    // 找到 LiquidVolume 组件
+    //    Transform liquidObj = obj.transform.Find(LIQUID_PATH);
+    //    if (liquidObj == null)
+    //    {
+    //        Debug.LogWarning($"对象 {obj.name} 下未找到 {LIQUID_PATH}");
+    //        return;
+    //    }
 
-        LiquidVolume liquid = liquidObj.GetComponent<LiquidVolume>();
-        if (liquid == null)
-        {
-            Debug.LogWarning($"未在 {liquidObj.name} 上找到 LiquidVolume 组件");
-            return;
-        }
+    //    LiquidVolume liquid = liquidObj.GetComponent<LiquidVolume>();
+    //    if (liquid == null)
+    //    {
+    //        Debug.LogWarning($"未在 {liquidObj.name} 上找到 LiquidVolume 组件");
+    //        return;
+    //    }
 
-        // === 修改属性 ===
-        liquid.enabled = false;  // 🔄 防止未初始化状态影响
-        liquid.enabled = true;   // 强制重新初始化（等价于重新挂载组件）
+    //    // === 修改属性 ===
+    //    liquid.enabled = false;  // 🔄 防止未初始化状态影响
+    //    liquid.enabled = true;   // 强制重新初始化（等价于重新挂载组件）
 
-        liquid.level = 1.0f;
-        liquid.liquidColor1 = liquidColor;
-        liquid.liquidColor2 = liquidColor;
-        liquid.alpha = 1.0f;
-        liquid.murkiness = 0.0f;
+    //    liquid.level = 1.0f;
+    //    liquid.liquidColor1 = liquidColor;
+    //    liquid.liquidColor2 = liquidColor;
+    //    liquid.alpha = 1.0f;
+    //    liquid.murkiness = 0.0f;
 
-        // === 关键刷新步骤 ===
-        liquid.RefreshMaterialProperties();  // ✅ 刷新所有材质参数
-        liquid.UpdateMaterialProperties();   // ✅ 最后同步到GPU
-    }
+    //    liquidObj.localEulerAngles = new Vector3(0, liquidObj.localEulerAngles.y, 0);
+
+    //    // === 关键刷新步骤 ===
+    //    liquid.RefreshMaterialProperties();  // ✅ 刷新所有材质参数
+    //    liquid.UpdateMaterialProperties();   // ✅ 最后同步到GPU
+    //}
 
     /// <summary>
     /// 填充液体（等价于 AddLiquid + 满液位）
@@ -457,6 +461,31 @@ public class ExperimentActionExecutor : MonoBehaviour
         if (solidObj == null)
         {
             Debug.LogWarning($"对象 {obj.name} 下未找到 {SOLID_PATH}");
+            return;
+        }
+
+        solidObj.gameObject.SetActive(true);
+        Renderer renderer = solidObj.GetComponent<Renderer>();
+        if (renderer != null) renderer.material.color = solidColor;
+    }
+
+    public void AddLiquid(GameObject obj, string liquidName)
+    {
+        if (obj == null) return;
+
+        if (!ChemistryDefinitions.allowedLiquids_dict.TryGetValue(liquidName, out string colorHex))
+        {
+            Debug.LogWarning($"液体 {liquidName} 未定义，使用默认颜色白色");
+            colorHex = "#FFFFFF";
+        }
+
+        if (!ColorUtility.TryParseHtmlString(colorHex, out Color solidColor))
+            solidColor = Color.white;
+
+        Transform solidObj = obj.transform.Find(LIQUID_PATH);
+        if (solidObj == null)
+        {
+            Debug.LogWarning($"对象 {obj.name} 下未找到 {LIQUID_PATH}");
             return;
         }
 
@@ -631,6 +660,444 @@ public class ExperimentActionExecutor : MonoBehaviour
                     Debug.LogWarning($"⚠️ 未识别操作类型: {op}");
                     break;
             }
+        }
+    }
+    public void Transfer(GameObject sourceObj, GameObject targetObj)
+    {
+        Transform solidObj = sourceObj.transform.Find(LIQUID_PATH);
+        if (solidObj == null)
+        {
+            Debug.LogWarning($"对象 {sourceObj.name} 下未找到 {LIQUID_PATH}");
+            return;
+        }
+
+        Renderer renderer = solidObj.GetComponent<Renderer>();
+
+        Transform tarObj = targetObj.transform.Find(LIQUID_PATH);
+        if (tarObj == null)
+        {
+            Debug.LogWarning($"对象 {tarObj.name} 下未找到 {LIQUID_PATH}");
+            return;
+        }
+        
+        Renderer renderer1 = tarObj.GetComponent<Renderer>();
+        if (renderer != null&& renderer1!=null) renderer1.material.color = renderer.material.color;
+        solidObj.gameObject.SetActive(false);
+        tarObj.gameObject.SetActive(true);
+    }
+
+    public void AlignByAnchor_c(string objAName,string anchorA, string objBName, string anchorB,string alignMode,bool reverse=false)
+    {
+        
+        if (reverse)
+        {
+            // 交换物体和锚点
+            string tempObj = objAName;
+            objAName = objBName;
+            objBName = tempObj;
+
+            string tempAnchor = anchorA;
+            anchorA = anchorB;
+            anchorB = tempAnchor;
+        }
+        GameObject srcObj = GameObject.Find(objAName);
+        GameObject tgtObj = GameObject.Find(objBName);
+
+        if (srcObj == null || tgtObj == null)
+        {
+            Debug.LogError($"❌ 找不到物体：{objAName} 或 {objBName}");
+            return;
+        }
+
+        Transform sourceAnchor = srcObj.transform.Find("Anchors/" + anchorA);
+        Transform targetAnchor = tgtObj.transform.Find("Anchors/" + anchorB);
+
+        if (sourceAnchor == null || targetAnchor == null)
+        {
+            Debug.LogError($"❌ 找不到锚点：{anchorA} 或 {anchorB}");
+            return;
+        }
+
+        // 特殊逻辑：盖上酒精灯 → 关闭火焰
+        if (srcObj.name == "alcohol_lamp_cap" && tgtObj.name == "alcohol_lamp")
+        {
+            GameObject fire = tgtObj.transform.Find("Fire")?.gameObject;
+            if (fire != null) fire.SetActive(false);
+        }
+
+        // 默认模式
+        if (string.IsNullOrEmpty(alignMode))
+            alignMode = "AlignPositionRotation";
+
+        string mode = alignMode.Trim().ToLowerInvariant();
+
+        // -----------------------------
+        // 1️⃣ 计算锚点相对信息
+        // -----------------------------
+        Vector3 anchorLocalPos = srcObj.transform.InverseTransformPoint(sourceAnchor.position);
+        Vector3 anchorLocalUp = srcObj.transform.InverseTransformDirection(sourceAnchor.up);
+        Vector3 targetWorldPos = targetAnchor.position;
+        Vector3 targetWorldUp = targetAnchor.up;
+
+        // -----------------------------
+        // 2️⃣ 仅对齐位置
+        // -----------------------------
+        if (mode == "alignposition")
+        {
+            Vector3 currentAnchorWorld = srcObj.transform.TransformPoint(anchorLocalPos);
+            Vector3 delta = targetWorldPos - currentAnchorWorld;
+            srcObj.transform.position += delta;
+
+            // 避免重叠
+            EnsureNoOverlap_AlongNormal(srcObj, tgtObj, 0.01f);
+            Debug.Log($"✅ 已完成位置对齐：{objAName} → {objBName}");
+            return;
+        }
+
+        // -----------------------------
+        // 3️⃣ 对齐旋转 + 位置
+        // -----------------------------
+        if (mode == "alignpositionrotation")
+        {
+            Vector3 currentUpWorld = srcObj.transform.TransformDirection(anchorLocalUp);
+            Quaternion rot = Quaternion.FromToRotation(currentUpWorld, targetWorldUp);
+            srcObj.transform.rotation = rot * srcObj.transform.rotation;
+
+            Vector3 anchorWorldAfterRotate = srcObj.transform.TransformPoint(anchorLocalPos);
+            Vector3 translation = targetWorldPos - anchorWorldAfterRotate;
+            srcObj.transform.position += translation;
+
+            Debug.Log($"✅ 已完成位置+旋转对齐：{objAName} → {objBName}");
+
+            // ✅ 添加连接记录
+            ConnectionTracker trackerA = srcObj.GetComponent<ConnectionTracker>();
+            if (trackerA == null) trackerA = srcObj.AddComponent<ConnectionTracker>();
+
+            ConnectionTracker trackerB = tgtObj.GetComponent<ConnectionTracker>();
+            if (trackerB == null) trackerB = tgtObj.AddComponent<ConnectionTracker>();
+
+            trackerA.AddConnection(objBName, anchorA, anchorB, alignMode);
+            trackerB.AddConnection(objAName, anchorB, anchorA, alignMode);
+            Debug.Log($"✅ 已完成位置+旋转对齐并建立连接：{objAName} ↔ {objBName}");
+            return;
+        }
+
+        Debug.LogWarning($"⚠️ 未识别的对齐模式: {alignMode}");
+    }
+
+    /// <summary>
+    /// 将物体竖直放置并沿 Z 轴平移到不与 SceneRoot 中其他物体重叠的位置。
+    /// </summary>
+    private void PlaceSafely_AtMaxZ(GameObject obj, Transform sceneRoot, float padding = 0.01f)
+    {
+        if (obj == null || sceneRoot == null) return;
+        Collider objCol = obj.GetComponentInChildren<Collider>();
+        if (objCol == null) return;
+
+        // 竖直放置tool
+        obj.transform.eulerAngles = Vector3.zero;
+
+        // 2️⃣ 获取当前场景中所有其他碰撞体的最大 Z 边界
+        float maxZ = float.MinValue;
+        Collider[] allCols = sceneRoot.GetComponentsInChildren<Collider>(true);
+        foreach (var col in allCols)
+        {
+            if (col == objCol) continue;
+            float zMax = col.bounds.max.z;
+            if (zMax > maxZ) maxZ = zMax;
+        }
+
+        // 3️⃣ 将当前物体沿 Z 轴平移到该最大 Z 边界之后
+        float objHalfZ = objCol.bounds.extents.z;
+        Vector3 pos = obj.transform.position;
+        pos.z = maxZ + objHalfZ + padding;
+        obj.transform.position = pos;
+    }
+
+
+    public void ex_xdl(XElement action,string apiResponse)
+    {
+        string name = action.Name.LocalName;
+
+        // 提取参与对象
+        string objA = null;
+        string objB = null;
+
+        if (string.IsNullOrEmpty(apiResponse))
+        {
+            Debug.LogError("❌ apiResponse 为空！");
+            return;
+        }
+
+        JObject json;
+        try
+        {
+            json = JObject.Parse(apiResponse);
+        }
+        catch
+        {
+            Debug.LogError("❌ JSON 解析失败：" + apiResponse);
+            return;
+        }
+
+        string objAName = json["objectA"]?.ToString();
+        string objBName = json["objectB"]?.ToString();
+        string anchorA = json["anchorA"]?.ToString();
+        string anchorB = json["anchorB"]?.ToString();
+
+        if (string.IsNullOrEmpty(objAName) || string.IsNullOrEmpty(objBName) ||
+            string.IsNullOrEmpty(anchorA) || string.IsNullOrEmpty(anchorB))
+        {
+            Debug.LogError("❌ apiResponse 缺少必要字段（objectA, objectB, anchorA, anchorB）");
+            return;
+        }
+
+        switch (name)
+        {
+            case "Attach":
+                GameObject gameobjA = GameObject.Find(objAName);
+                GameObject gameobjB = GameObject.Find(objBName);
+                ConnectionTracker trackerA = gameobjA.GetComponent<ConnectionTracker>();
+                ConnectionTracker trackerB = gameobjB.GetComponent<ConnectionTracker>();
+                bool reverse = false;
+                if (trackerA == null && trackerB ==null)
+                {
+                    Debug.LogError("❌ ConnectionTracker 组件未找到" );
+                    break;
+                }
+                if (trackerA.connections.Count > trackerB.connections.Count)
+                {
+                    reverse = true;
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                    for(int i =0; i<trackerA.connections.Count;i++ )
+                    {
+                        var conn = trackerA.connections[i];
+                        if (i< trackerA.connections.Count-1)
+                        {
+                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation");
+                        }
+                        else
+                        {
+                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation", reverse);
+                        }
+                    }
+                }
+                else
+                {
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                }
+
+                break;
+
+            case "Insert":
+                gameobjA = GameObject.Find(objAName);
+                gameobjB = GameObject.Find(objBName);
+                trackerA = gameobjA.GetComponent<ConnectionTracker>();
+                trackerB = gameobjB.GetComponent<ConnectionTracker>();
+                reverse = false;
+                if (trackerA == null && trackerB == null)
+                {
+                    Debug.LogError("❌ ConnectionTracker 组件未找到");
+                    break;
+                }
+                if (trackerA.connections.Count > trackerB.connections.Count)
+                {
+                    reverse = true;
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                    for (int i = 0; i < trackerA.connections.Count; i++)
+                    {
+                        var conn = trackerA.connections[i];
+                        if (i < trackerA.connections.Count - 1)
+                        {
+                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation");
+                        }
+                        else
+                        {
+                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation", reverse);
+                        }
+                    }
+                }
+                else
+                {
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                }
+                break;
+
+            case "Add":
+                objA = action.Attribute("tool")?.Value;
+                objB = action.Attribute("vessel")?.Value;
+                string reagent = action.Attribute("reagent")?.Value;
+
+                if (string.IsNullOrEmpty(objA) || string.IsNullOrEmpty(objB))
+                    break;
+
+                GameObject toolObj = GameObject.Find(objA);
+                GameObject vesselObj = GameObject.Find(objB);
+                if (toolObj == null || vesselObj == null)
+                    break;
+
+                Transform sceneRoot = GameObject.Find("SceneRoot")?.transform;
+                // ===== Step 2：竖直放置并移动到 SceneRoot 最远的 Z 位置 =====
+                PlaceSafely_AtMaxZ(vesselObj, sceneRoot, 0.01f);
+                if (objA.Contains("spatula"))
+                {
+                    // 平放tool
+                    LayFlat(toolObj);
+                    AddSolid(toolObj, reagent);
+                    AddSolid(vesselObj, reagent);
+
+                    // 平放容器
+                    LayFlat(vesselObj);
+                    // 对齐锚点及法向量
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                }
+                else if(objA.Contains("dropper"))
+                {
+                    AddLiquid(toolObj, reagent);
+                    AddLiquid(vesselObj, reagent);
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                }
+                else
+                {
+                    // 如果是液体，则倒入
+                    // 旋转tool
+                    TiltUp(toolObj);
+                    AddLiquid(toolObj, reagent);
+                    AddLiquid(vesselObj, reagent);
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPosition");
+                }
+
+                break;
+
+            case "Transfer":
+                objA = action.Attribute("from_vessel")?.Value;
+                objB = action.Attribute("to_vessel")?.Value;
+
+                if (string.IsNullOrEmpty(objA) || string.IsNullOrEmpty(objB))
+                    break;
+
+                toolObj = GameObject.Find(objA);
+                vesselObj = GameObject.Find(objB);
+                if (toolObj == null || vesselObj == null)
+                    break;
+                sceneRoot = GameObject.Find("SceneRoot")?.transform;
+                // ===== Step 2：竖直放置并移动到 SceneRoot 最远的 Z 位置 =====
+                PlaceSafely_AtMaxZ(vesselObj, sceneRoot, 0.01f);
+                
+                TiltUp(toolObj);
+                Transfer(toolObj, vesselObj);
+                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPosition");
+                break;
+
+            case "Stir":
+                objA = action.Attribute("tool")?.Value;
+                objB = action.Attribute("vessel")?.Value;
+
+                if (string.IsNullOrEmpty(objA) || string.IsNullOrEmpty(objB))
+                    break;
+
+                toolObj = GameObject.Find(objA);
+                vesselObj = GameObject.Find(objB);
+                if (toolObj == null || vesselObj == null)
+                    break;
+                sceneRoot = GameObject.Find("SceneRoot")?.transform;
+                // ===== Step 2：竖直放置并移动到 SceneRoot 最远的 Z 位置 =====
+                PlaceSafely_AtMaxZ(vesselObj, sceneRoot, 0.01f);
+                // 对齐锚点及法向量
+                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                break;
+
+            case "Heat":
+                objA = action.Attribute("tool")?.Value;
+                GameObject fire = GameObject.Find(objA);
+                StartCoroutine(Ignite(fire));
+                // 对齐锚点
+                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPosition");
+                break;
+            case "Cool":
+                objA = action.Attribute("tool")?.Value;
+                objB = action.Attribute("vessel")?.Value;
+
+                if (string.IsNullOrEmpty(objA) || string.IsNullOrEmpty(objB))
+                    break;
+
+                toolObj = GameObject.Find(objA);
+                vesselObj = GameObject.Find(objB);
+                if (toolObj == null || vesselObj == null)
+                    break;
+                sceneRoot = GameObject.Find("SceneRoot")?.transform;
+                // ===== Step 2：竖直放置并移动到 SceneRoot 最远的 Z 位置 =====
+                PlaceSafely_AtMaxZ(vesselObj, sceneRoot, 0.01f);
+                // 对齐锚点
+                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPosition");
+                break;
+
+            case "MeasureTemperature":
+                objA = action.Attribute("tool")?.Value;
+                objB = action.Attribute("vessel")?.Value;
+
+                if (string.IsNullOrEmpty(objA) || string.IsNullOrEmpty(objB))
+                    break;
+
+                toolObj = GameObject.Find(objA);
+                vesselObj = GameObject.Find(objB);
+                if (toolObj == null || vesselObj == null)
+                    break;
+                sceneRoot = GameObject.Find("SceneRoot")?.transform;
+                // ===== Step 2：竖直放置并移动到 SceneRoot 最远的 Z 位置 =====
+                PlaceSafely_AtMaxZ(vesselObj, sceneRoot, 0.01f);
+                // 对齐锚点及法向量
+                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                break;
+
+            case "Filter":
+                // 对齐锚点
+
+                // 倒入
+                objA = action.Attribute("from_vessel")?.Value;
+                // 旋转tool
+                GameObject tool1 = GameObject.Find(objA);
+                TiltUp(tool1);
+                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPosition");
+                break;
+
+            case "CollectGas":
+                objA = action.Attribute("collector")?.Value;
+                GameObject obj = GameObject.Find(objA);
+                ReverseObject(obj);
+                gameobjA = FindObjectsOfType<GameObject>()
+                .FirstOrDefault(obj => obj.name.Contains("rubber_stopper_with_delivery_tube")); ;
+                gameobjB = GameObject.Find(objBName);
+                trackerA = gameobjA.GetComponent<ConnectionTracker>();
+                trackerB = gameobjB.GetComponent<ConnectionTracker>();
+                reverse = false;
+                if (trackerA == null && trackerB == null)
+                {
+                    Debug.LogError("❌ ConnectionTracker 组件未找到");
+                    break;
+                }
+                if (trackerA.connections.Count > trackerB.connections.Count)
+                {
+                    reverse = true;
+                    AlignByAnchor_c(objAName, "tube_exit_port", objBName, anchorB, "AlignPositionRotation");
+                    for (int i = 0; i < trackerA.connections.Count; i++)
+                    {
+                        var conn = trackerA.connections[i];
+                        if (i < trackerA.connections.Count - 1)
+                        {
+                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation");
+                        }
+                        else
+                        {
+                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation", reverse);
+                        }
+                    }
+                }
+                else
+                {
+                    AlignByAnchor_c(objAName, "tube_exit_port", objBName, anchorB, "AlignPositionRotation");
+                }
+                break;
         }
     }
 

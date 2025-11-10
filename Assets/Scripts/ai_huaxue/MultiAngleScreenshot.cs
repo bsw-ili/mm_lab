@@ -6,6 +6,9 @@ using System;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
+using System.Linq;
+using System.Runtime.CompilerServices;
+
 
 public class MultiAngleScreenshot : MonoBehaviour
 {
@@ -15,6 +18,7 @@ public class MultiAngleScreenshot : MonoBehaviour
     public string saveFolder = "Screenshots_1";
     public float paddingFactor = 1.2f; // 稍微拉远一点，防止边缘裁切
     public bool transparentBackground = true; // ✅ 是否导出透明背景
+    public Material lineMaterial;
 
     public void CaptureObjectsFromAngles(GameObject opObj, GameObject targetObj, string filename, string opName, string targetName,Action<List<string>> onComplete)
     {
@@ -134,6 +138,149 @@ public class MultiAngleScreenshot : MonoBehaviour
         onComplete?.Invoke(capturedPaths);
     }
 
+    /// <summary>
+    /// 计算 SceneRoot 下所有渲染器的整体包围盒
+    /// </summary>
+    private Bounds CalculateSceneBounds(Transform sceneRoot)
+    {
+        Renderer[] renderers = sceneRoot.GetComponentsInChildren<Renderer>(true);
+        if (renderers.Length == 0)
+            return new Bounds(sceneRoot.position, Vector3.one);
+
+        Bounds bounds = renderers[0].bounds;
+        foreach (var r in renderers.Skip(1))
+            bounds.Encapsulate(r.bounds);
+        return bounds;
+    }
+
+
+    // 计算物体及子物体包围盒
+    private Bounds CalculateBounds(Transform root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0)
+            return new Bounds(root.position, Vector3.zero);
+
+        Bounds bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++)
+        {
+            bounds.Encapsulate(renderers[i].bounds);
+        }
+        return bounds;
+    }
+
+    // GL 绘制红色线框
+    private void DrawWireframe(Bounds bounds)
+    {
+        Vector3 c = bounds.center;
+        Vector3 s = bounds.extents;
+
+        Vector3[] corners = new Vector3[8];
+        corners[0] = c + new Vector3(-s.x, -s.y, -s.z);
+        corners[1] = c + new Vector3(s.x, -s.y, -s.z);
+        corners[2] = c + new Vector3(s.x, -s.y, s.z);
+        corners[3] = c + new Vector3(-s.x, -s.y, s.z);
+
+        corners[4] = c + new Vector3(-s.x, s.y, -s.z);
+        corners[5] = c + new Vector3(s.x, s.y, -s.z);
+        corners[6] = c + new Vector3(s.x, s.y, s.z);
+        corners[7] = c + new Vector3(-s.x, s.y, s.z);
+
+        int[,] lines = {
+            {0,1},{1,2},{2,3},{3,0}, // 底面
+            {4,5},{5,6},{6,7},{7,4}, // 顶面
+            {0,4},{1,5},{2,6},{3,7}  // 竖边
+        };
+
+        GL.Begin(GL.LINES);
+        GL.Color(Color.red);
+        for (int i = 0; i < lines.GetLength(0); i++)
+        {
+            GL.Vertex(corners[lines[i, 0]]);
+            GL.Vertex(corners[lines[i, 1]]);
+        }
+        GL.End();
+    }
+
+    // 截图方法（带操作物体红框）
+    public async Task<List<string>> CapturePics(string filename, List<GameObject> activeObjects)
+    {
+        List<string> capturedPaths = new List<string>();
+        Transform sceneRoot = GameObject.Find("SceneRoot")?.transform;
+        if (sceneRoot == null)
+        {
+            Debug.LogError("❌ 未找到 SceneRoot！");
+            return capturedPaths;
+        }
+
+        Bounds bounds = CalculateBounds(sceneRoot);
+        Vector3 center = bounds.center;
+
+        if (captureCamera == null)
+        {
+            Debug.LogError("❌ 未指定截图相机！");
+            return capturedPaths;
+        }
+
+        captureCamera.gameObject.SetActive(true);
+        captureCamera.clearFlags = CameraClearFlags.SolidColor;
+        captureCamera.backgroundColor = new Color(0x4F / 255f, 0x6B / 255f, 0x4C / 255f);
+        captureCamera.cullingMask = ~0;
+
+        // 多角度视图
+        Vector3[] angles =
+        {
+        new Vector3(0, 180, 0),      // 正面
+        new Vector3(30, 225, 0),     // 右上
+        new Vector3(60, 180, 0)      // 顶视
+    };
+        string[] angleLabels = { "front", "topright", "top" };
+
+        string folderPath = Path.Combine(@"E:\llm_lab", saveFolder);
+        if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+
+        string timestamp = System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        // ✅ 动态计算相机距离（根据视野和物体尺寸）
+        float radius = bounds.extents.magnitude;
+        float fovRad = captureCamera.fieldOfView * Mathf.Deg2Rad;
+        float baseDistance = (radius / Mathf.Sin(fovRad * 0.5f)) * paddingFactor;
+
+        // ✅ 距离平滑（避免突然跳动）
+        baseDistance = Mathf.Clamp(baseDistance, 0.3f, 10f);
+
+        // ✅ 添加 OutlineDrawer（关键部分）
+        OutlineDrawer outline = captureCamera.GetComponent<OutlineDrawer>();
+        if (outline == null)
+            outline = captureCamera.gameObject.AddComponent<OutlineDrawer>();
+
+        outline.lineMaterial = lineMaterial;
+        outline.SetTargets(activeObjects);
+
+        // ✅ 遍历角度并截图
+        foreach (var euler in angles)
+        {
+            Quaternion rotation = Quaternion.Euler(euler);
+            Vector3 dir = rotation * Vector3.forward;
+            Vector3 camPos = center - dir * baseDistance;
+
+            captureCamera.transform.position = camPos;
+            captureCamera.transform.LookAt(center);
+
+            await new WaitForEndOfFrameAwaiter(); // 等待渲染完成
+
+            string fileName = $"{filename}_{angleLabels[System.Array.IndexOf(angles, euler)]}_{timestamp}.png";
+            string filePath = Path.Combine(folderPath, fileName);
+
+            SaveCameraView(captureCamera, filePath);
+            capturedPaths.Add(filePath);
+        }
+
+        Debug.Log($"✅ 多角度截图完成，共 {capturedPaths.Count} 张，保存路径：{folderPath}");
+        return capturedPaths;
+    }
+
+
+
 
     private float GetCameraDistance(Bounds bounds, Camera cam, float padding)
     {
@@ -179,7 +326,7 @@ public class MultiAngleScreenshot : MonoBehaviour
         RenderTexture.active = rt;
         screenShot.ReadPixels(new Rect(0, 0, imageWidth, imageHeight), 0, 0);
         screenShot.Apply();
-        filePath = GetSafeFilePath(filePath);
+        //filePath = GetSafeFilePath(filePath);
         byte[] bytes = screenShot.EncodeToPNG();
         File.WriteAllBytes(filePath, bytes);
 
@@ -210,4 +357,171 @@ public class MultiAngleScreenshot : MonoBehaviour
         return await tcs.Task;
     }
 
+}
+
+
+public class UnityMainThreadDispatcher : MonoBehaviour
+{
+    private static readonly Queue<Action> _executionQueue = new Queue<Action>();
+
+    private static UnityMainThreadDispatcher _instance;
+
+    public static UnityMainThreadDispatcher Instance()
+    {
+        if (!_instance)
+        {
+            var obj = new GameObject("UnityMainThreadDispatcher");
+            _instance = obj.AddComponent<UnityMainThreadDispatcher>();
+            DontDestroyOnLoad(obj);
+        }
+        return _instance;
+    }
+
+    public void Enqueue(Action action)
+    {
+        if (action == null) return;
+        lock (_executionQueue)
+        {
+            _executionQueue.Enqueue(action);
+        }
+    }
+
+    void Update()
+    {
+        lock (_executionQueue)
+        {
+            while (_executionQueue.Count > 0)
+            {
+                _executionQueue.Dequeue().Invoke();
+            }
+        }
+    }
+}
+
+
+public class WaitForEndOfFrameAwaiter : CustomYieldInstruction
+{
+    private TaskCompletionSource<bool> _tcs = new TaskCompletionSource<bool>();
+
+    public WaitForEndOfFrameAwaiter()
+    {
+        // 开启协程等待渲染帧结束
+        UnityMainThreadDispatcher.Instance().StartCoroutine(WaitForEnd());
+    }
+
+    private IEnumerator WaitForEnd()
+    {
+        yield return new WaitForEndOfFrame();
+        _tcs.TrySetResult(true);
+    }
+
+    public TaskAwaiter<bool> GetAwaiter() => _tcs.Task.GetAwaiter();
+
+    public override bool keepWaiting => !_tcs.Task.IsCompleted;
+}
+
+[RequireComponent(typeof(Camera))]
+public class OutlineDrawer : MonoBehaviour
+{
+    public Material lineMaterial;
+    private List<GameObject> targetObjects = new List<GameObject>();
+    private Color lineColor = Color.red;
+    private Camera cam;
+
+    private void Awake()
+    {
+        cam = GetComponent<Camera>();
+    }
+
+    /// <summary>
+    /// 设置要绘制边框的目标物体列表
+    /// </summary>
+    public void SetTargets(List<GameObject> objects)
+    {
+        targetObjects.Clear();
+        foreach (var obj in objects)
+        {
+            if (obj != null)
+                targetObjects.Add(obj);
+        }
+    }
+
+    void OnPostRender()
+    {
+        if (lineMaterial == null || targetObjects.Count == 0) return;
+        if (cam == null) cam = GetComponent<Camera>();
+
+        GL.PushMatrix();
+        GL.LoadPixelMatrix(0, cam.pixelWidth, 0, cam.pixelHeight);
+        lineMaterial.SetPass(0);
+        GL.Begin(GL.LINES);
+        GL.Color(lineColor);
+
+        foreach (var obj in targetObjects)
+        {
+            if (obj == null) continue;
+
+            // 获取所有子 Renderer，忽略粒子系统
+            Renderer[] renderers = obj.GetComponentsInChildren<Renderer>()
+                                      .Where(r => !(r is ParticleSystemRenderer))
+                                      .ToArray();
+            if (renderers.Length == 0) continue;
+
+            Vector3 min = new Vector3(float.MaxValue, float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue, float.MinValue);
+            bool anyVisible = false;
+
+            foreach (var r in renderers)
+            {
+                Bounds b = r.bounds;
+                Vector3 c = b.center;
+                Vector3 s = b.extents;
+
+                // 八个角点
+                Vector3[] corners = new Vector3[8];
+                corners[0] = c + new Vector3(-s.x, -s.y, -s.z);
+                corners[1] = c + new Vector3(s.x, -s.y, -s.z);
+                corners[2] = c + new Vector3(s.x, -s.y, s.z);
+                corners[3] = c + new Vector3(-s.x, -s.y, s.z);
+                corners[4] = c + new Vector3(-s.x, s.y, -s.z);
+                corners[5] = c + new Vector3(s.x, s.y, -s.z);
+                corners[6] = c + new Vector3(s.x, s.y, s.z);
+                corners[7] = c + new Vector3(-s.x, s.y, s.z);
+
+                // 转为屏幕空间
+                foreach (var corner in corners)
+                {
+                    Vector3 screenPos = cam.WorldToScreenPoint(corner);
+                    if (screenPos.z < 0) continue; // 背面忽略
+                    anyVisible = true;
+                    min.x = Mathf.Min(min.x, screenPos.x);
+                    min.y = Mathf.Min(min.y, screenPos.y);
+                    max.x = Mathf.Max(max.x, screenPos.x);
+                    max.y = Mathf.Max(max.y, screenPos.y);
+                }
+            }
+
+            if (anyVisible)
+                DrawRect(min, max);
+        }
+
+        GL.End();
+        GL.PopMatrix();
+    }
+
+    private void DrawRect(Vector3 min, Vector3 max)
+    {
+        // 绘制矩形边框
+        GL.Vertex3(min.x, min.y, 0);
+        GL.Vertex3(max.x, min.y, 0);
+
+        GL.Vertex3(max.x, min.y, 0);
+        GL.Vertex3(max.x, max.y, 0);
+
+        GL.Vertex3(max.x, max.y, 0);
+        GL.Vertex3(min.x, max.y, 0);
+
+        GL.Vertex3(min.x, max.y, 0);
+        GL.Vertex3(min.x, min.y, 0);
+    }
 }
