@@ -23,7 +23,7 @@ public static class Verify
 
         // ======= Temperature Control =======
         {"Heat", new(){"vessel", "tool"}},
-        {"Cool", new(){"vessel"}},
+        {"Cool", new(){"vessel","tool"}},
 
         // ======= Special =======
         {"Wait", new(){"time"}},
@@ -35,9 +35,6 @@ public static class Verify
         // ======= Separation =======
         {"Filter", new(){"from_vessel", "to_vessel", "tool"}},
         {"CollectGas", new(){"source_vessel", "collector", "method"}},
-
-        // ======= Observation =======
-        {"Observe", new(){"vessel"}},
     };
 
     private static readonly Dictionary<string, List<string>> optional_properties = new()
@@ -68,8 +65,6 @@ public static class Verify
         {"Filter", new(){"from_vessel", "to_vessel", "tool", "method", "filter_type", "pressure", "note"}},
         {"CollectGas", new(){"source_vessel", "collector", "method", "tool", "duration", "note"}},
 
-        // ======= Observation =======
-        {"Observe", new(){"vessel", "phenomenon", "time", "tool", "note"}},
     };
 
 
@@ -235,135 +230,90 @@ public static class Verify
     }
 
     // ========== Procedure ==========
+    // Procedure 部分验证
+    // ========== Procedure ==========
+    // Procedure 部分验证
     private static List<VerifyError> VerifyProcedure(XmlElement root, List<string> hardware, List<string> reagents, Dictionary<string, string> reagentStates)
     {
         var errors = new List<VerifyError>();
         var procedures = root.GetElementsByTagName("Procedure");
 
-        HashSet<string> hardwareActions = new() { "Attach", "Insert" };
-        HashSet<string> operationActions = new() { "Add", "Transfer", "Stir", "Heat", "Wait", "Cool", "MeasureTemperature", "MeasureMass", "Filter", "CollectGas", "Observe" };
-
-        bool enteredOperationStage = false;
-
         foreach (XmlNode proc in procedures)
         {
-            foreach (XmlNode stage in proc.ChildNodes)
+            foreach (XmlNode step in proc.ChildNodes)
             {
-                if (stage.Name != "Stage")
+                if (step.NodeType != XmlNodeType.Element) continue;
+
+                string action = step.Name;
+                var errs = new List<string>();
+
+                if (!mandatory_properties.ContainsKey(action))
                 {
-                    errors.Add(new VerifyError
-                    {
-                        step = stage.OuterXml,
-                        errors = new List<string> { "Only <Stage> elements are allowed inside <Procedure>." }
-                    });
-                    continue;
+                    errs.Add($"Unknown action '{action}'.");
                 }
-
-                string stageType = stage.Attributes?["type"]?.Value ?? "";
-                if (stageType != "hardware" && stageType != "operation")
+                else
                 {
-                    errors.Add(new VerifyError
+                    // ===== 检查必需属性 =====
+                    foreach (string prop in mandatory_properties[action])
+                        if (step.Attributes?[prop] == null)
+                            errs.Add($"Missing mandatory attribute '{prop}' in '{action}'.");
+
+                    // ===== 检查非法属性 =====
+                    var allowed = new HashSet<string>(optional_properties[action]);
+                    foreach (var p in mandatory_properties[action]) allowed.Add(p);
+                    foreach (XmlAttribute attr in step.Attributes)
+                        if (!allowed.Contains(attr.Name))
+                            errs.Add($"Illegal attribute '{attr.Name}' in '{action}'. Allowed: {string.Join(", ", allowed)}");
+
+                    // ===== 硬件存在性 =====
+                    foreach (string v in new[] { "vessel", "from_vessel", "to_vessel", "tool", "support", "source_vessel", "collector" })
+                        if (step.Attributes?[v] != null && !hardware.Contains(step.Attributes[v].Value))
+                            errs.Add($"'{step.Attributes[v].Value}' not found in Hardware list.");
+
+                    // ===== 试剂存在性与工具逻辑 =====
+                    if (step.Attributes?["reagent"] != null)
                     {
-                        step = stage.OuterXml,
-                        errors = new List<string> { "Stage must have type='hardware' or type='operation'." }
-                    });
-                    continue;
-                }
-
-                if (stageType == "operation") enteredOperationStage = true;
-                else if (stageType == "hardware" && enteredOperationStage)
-                {
-                    errors.Add(new VerifyError
-                    {
-                        step = stage.OuterXml,
-                        errors = new List<string> { "Hardware Stage cannot appear after Operation Stage." }
-                    });
-                }
-
-                foreach (XmlNode step in stage.ChildNodes)
-                {
-                    string action = step.Name;
-                    var errs = new List<string>();
-
-                    if (stageType == "hardware" && !hardwareActions.Contains(action))
-                        errs.Add($"Action '{action}' is not allowed in hardware stage.");
-                    if (stageType == "operation" && !operationActions.Contains(action))
-                        errs.Add($"Action '{action}' is not allowed in operation stage.");
-
-                    if (!mandatory_properties.ContainsKey(action))
-                    {
-                        errs.Add($"Unknown action '{action}' in procedure.");
-                    }
-                    else
-                    {
-                        foreach (string prop in mandatory_properties[action])
-                            if (step.Attributes?[prop] == null)
-                                errs.Add($"You must have '{prop}' property when doing '{action}'.");
-
-                        foreach (XmlAttribute attr in step.Attributes)
+                        string reagent = step.Attributes["reagent"].Value;
+                        if (!reagentStates.ContainsKey(reagent))
+                            errs.Add($"Reagent '{reagent}' not defined or missing 'state'.");
+                        else if (action == "Add")
                         {
-                            var allowed = new HashSet<string>(optional_properties[action]);
-                            foreach (var p in mandatory_properties[action]) allowed.Add(p);
-                            if (!allowed.Contains(attr.Name))
-                                errs.Add($"The {attr.Name} property in {action} is not allowed. Allowed: {string.Join(", ", allowed)}");
-                        }
-
-                        foreach (string v in new[] { "vessel", "from_vessel", "to_vessel", "tool", "support", "source_vessel", "collector" })
-                        {
-                            if (step.Attributes?[v] != null && !hardware.Contains(step.Attributes[v].Value))
-                                errs.Add($"{step.Attributes[v].Value} is not defined in Hardware.");
-                        }
-
-                        // reagent 检查
-                        if (step.Attributes?["reagent"] != null)
-                        {
-                            string reagent = step.Attributes["reagent"].Value;
-                            if (!reagentStates.ContainsKey(reagent))
-                            {
-                                errs.Add($"{reagent} is not defined in Reagents or missing 'state' property.");
-                            }
-                            else
-                            {
-                                // === Add 操作根据 state 判断工具合法性 ===
-                                if (action == "Add" && step.Attributes?["tool"] != null)
-                                {
-                                    string tool_type = NormalizeHardwareId(step.Attributes["tool"].Value);
-                                    string state = reagentStates[reagent];
-
-                                    if (state == "solid")
-                                    {
-                                        if (tool_type != "spatula")
-                                            errs.Add($"When adding solid reagent '{reagent}', you must use 'spatula' as the tool.");
-                                    }
-                                    else if (state == "liquid")
-                                    {
-                                        if (tool_type != "dropper" && tool_type != "graduated_cylinder")
-                                            errs.Add($"When adding liquid reagent '{reagent}', you must use 'dropper' or 'graduated_cylinder' as the tool.");
-                                    }
-                                    else
-                                    {
-                                        errs.Add($"Reagent '{reagent}' has invalid state '{state}'; must be 'solid' or 'liquid'.");
-                                    }
-                                }
-                            }
+                            string tool_type = NormalizeHardwareId(step.Attributes["tool"].Value);
+                            string state = reagentStates[reagent];
+                            if (state == "solid" && tool_type != "spatula")
+                                errs.Add($"Solid reagent '{reagent}' must be added using 'spatula'.");
+                            else if (state == "liquid" && tool_type != "dropper" && tool_type != "graduated_cylinder")
+                                errs.Add($"Liquid reagent '{reagent}' must use 'dropper' or 'graduated_cylinder'.");
                         }
                     }
 
-                    if (errs.Count > 0)
+                    // ===== 新增：防止同物体操作 =====
+                    var involvedObjects = new Dictionary<string, string>();
+                    foreach (var key in new[] { "vessel", "from_vessel", "to_vessel", "tool", "support", "source_vessel", "collector" })
                     {
-                        errors.Add(new VerifyError
-                        {
-                            step = step.OuterXml.Replace("\n", " "),
-                            errors = errs
-                        });
+                        if (step.Attributes?[key] != null)
+                            involvedObjects[key] = step.Attributes[key].Value;
+                    }
+
+                    // 检查不同属性引用同一个物体
+                    var duplicates = involvedObjects
+                        .GroupBy(kv => kv.Value)
+                        .Where(g => g.Count() > 1)
+                        .Select(g => $"{g.Key} ({g.First().Value})");
+                    if (duplicates.Any())
+                    {
+                        var sameObj = string.Join(", ", duplicates);
+                        errs.Add($"Invalid operation: different roles reference the same object → {sameObj}.");
                     }
                 }
+
+                if (errs.Count > 0)
+                    errors.Add(new VerifyError { step = step.OuterXml, errors = errs });
             }
         }
 
         return errors;
     }
-
 
 
     // ========== 工具函数：去除编号 ==========

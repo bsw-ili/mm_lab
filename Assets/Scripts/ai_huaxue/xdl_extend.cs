@@ -38,7 +38,7 @@ public class XDL_Extend : MonoBehaviour
             // === Stage 1: XML → Parameter Extraction ===
             LogStep(actionName, "XML parsed successfully");
 
-            if (actionName != "Observe" || actionName != "Wait")
+            if (actionName != "Wait")
             {
                 // === Stage 2: Generate Prompt (anchor inference style) ===
                 string prompt = await BuildAnchorPromptForAction(action);
