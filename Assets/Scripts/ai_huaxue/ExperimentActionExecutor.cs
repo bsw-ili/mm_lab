@@ -686,7 +686,7 @@ public class ExperimentActionExecutor : MonoBehaviour
         tarObj.gameObject.SetActive(true);
     }
 
-    public void AlignByAnchor_c(string objAName,string anchorA, string objBName, string anchorB,string alignMode,bool reverse=false)
+    public void AlignByAnchor_c(string objAName,string anchorA, string objBName, string anchorB,string alignMode,bool reverse=false,bool recode=true)
     {
         
         if (reverse)
@@ -769,17 +769,20 @@ public class ExperimentActionExecutor : MonoBehaviour
 
             Debug.Log($"✅ 已完成位置+旋转对齐：{objAName} → {objBName}");
 
-            // ✅ 添加连接记录
-            ConnectionTracker trackerA = srcObj.GetComponent<ConnectionTracker>();
-            if (trackerA == null) trackerA = srcObj.AddComponent<ConnectionTracker>();
+            if (recode)
+            {
+                // ✅ 添加连接记录
+                ConnectionTracker trackerA = srcObj.GetComponent<ConnectionTracker>();
+                if (trackerA == null) trackerA = srcObj.AddComponent<ConnectionTracker>();
 
-            ConnectionTracker trackerB = tgtObj.GetComponent<ConnectionTracker>();
-            if (trackerB == null) trackerB = tgtObj.AddComponent<ConnectionTracker>();
+                ConnectionTracker trackerB = tgtObj.GetComponent<ConnectionTracker>();
+                if (trackerB == null) trackerB = tgtObj.AddComponent<ConnectionTracker>();
 
-            trackerA.AddConnection(objBName, anchorA, anchorB, alignMode);
-            trackerB.AddConnection(objAName, anchorB, anchorA, alignMode);
-            Debug.Log($"✅ 已完成位置+旋转对齐并建立连接：{objAName} ↔ {objBName}");
-            return;
+                trackerA.AddConnection(objAName, objBName, anchorA, anchorB);
+                trackerB.AddConnection(objAName, objBName, anchorA, anchorB);
+                Debug.Log($"✅ 已完成位置+旋转对齐并建立连接：{objAName} ↔ {objBName}");
+                return;
+            }
         }
 
         Debug.LogWarning($"⚠️ 未识别的对齐模式: {alignMode}");
@@ -869,18 +872,46 @@ public class ExperimentActionExecutor : MonoBehaviour
                 {
                     reverse = true;
                     AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
-                    for(int i =0; i<trackerA.connections.Count;i++ )
+                    string prename = trackerA.gameObject.name;
+                    foreach(var conn in trackerA.connections)
                     {
-                        var conn = trackerA.connections[i];
-                        if (i< trackerA.connections.Count-1)
+                        if (conn.srcObj != prename)
                         {
-                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation");
-                        }
-                        else
-                        {
-                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation", reverse);
+                            reverse = false;
+                            break;
                         }
                     }
+                    if (reverse)
+                    {
+                        for (int i = 0; i < trackerA.connections.Count; i++)
+                        {
+                            var conn = trackerA.connections[i];
+                            if (i < trackerA.connections.Count - 1)
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation");
+                            }
+                            else
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation", reverse,false);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int i = trackerA.connections.Count-1; i >=0 ; i--)
+                        {
+                            var conn = trackerA.connections[i];
+                            if (i < trackerA.connections.Count - 1)
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation");
+                            }
+                            else
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation", reverse, false);
+                            }
+                        }
+                    }
+                    
                 }
                 else
                 {
@@ -904,16 +935,43 @@ public class ExperimentActionExecutor : MonoBehaviour
                 {
                     reverse = true;
                     AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
-                    for (int i = 0; i < trackerA.connections.Count; i++)
+                    string prename = trackerA.gameObject.name;
+                    foreach (var conn in trackerA.connections)
                     {
-                        var conn = trackerA.connections[i];
-                        if (i < trackerA.connections.Count - 1)
+                        if (conn.srcObj != prename)
                         {
-                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation");
+                            reverse = false;
+                            break;
                         }
-                        else
+                    }
+                    if (reverse)
+                    {
+                        for (int i = 0; i < trackerA.connections.Count; i++)
                         {
-                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation", reverse);
+                            var conn = trackerA.connections[i];
+                            if (i < trackerA.connections.Count - 1)
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation");
+                            }
+                            else
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation", reverse,false);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int i = trackerA.connections.Count - 1; i >= 0; i--)
+                        {
+                            var conn = trackerA.connections[i];
+                            if (i < trackerA.connections.Count - 1)
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation");
+                            }
+                            else
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation", reverse,false);
+                            }
                         }
                     }
                 }
@@ -949,13 +1007,13 @@ public class ExperimentActionExecutor : MonoBehaviour
                     // 平放容器
                     LayFlat(vesselObj);
                     // 对齐锚点及法向量
-                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation", false,false);
                 }
                 else if(objA.Contains("dropper"))
                 {
                     AddLiquid(toolObj, reagent);
                     AddLiquid(vesselObj, reagent);
-                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                    AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation",false, false);
                 }
                 else
                 {
@@ -1004,7 +1062,7 @@ public class ExperimentActionExecutor : MonoBehaviour
                 // ===== Step 2：竖直放置并移动到 SceneRoot 最远的 Z 位置 =====
                 PlaceSafely_AtMaxZ(vesselObj, sceneRoot, 0.01f);
                 // 对齐锚点及法向量
-                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation", false, false);
                 break;
 
             case "Heat":
@@ -1047,7 +1105,14 @@ public class ExperimentActionExecutor : MonoBehaviour
                 // ===== Step 2：竖直放置并移动到 SceneRoot 最远的 Z 位置 =====
                 PlaceSafely_AtMaxZ(vesselObj, sceneRoot, 0.01f);
                 // 对齐锚点及法向量
-                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation");
+                AlignByAnchor_c(objAName, anchorA, objBName, anchorB, "AlignPositionRotation", false, false);
+                break;
+            case "MeasureMass":
+                objA = action.Attribute("tool")?.Value;
+                if(objA != "balance") break;
+                reagent = action.Attribute("reagent")?.Value;
+                GameObject obj = GameObject.Find(objA);
+                AddSolid(obj,reagent);
                 break;
 
             case "Filter":
@@ -1063,10 +1128,13 @@ public class ExperimentActionExecutor : MonoBehaviour
 
             case "CollectGas":
                 objA = action.Attribute("collector")?.Value;
-                GameObject obj = GameObject.Find(objA);
-                ReverseObject(obj);
+                string method = action.Attribute("method")?.Value;
+                obj = GameObject.Find(objA);
+                if (method != "upward_delivery")
+                    ReverseObject(obj);
                 gameobjA = FindObjectsOfType<GameObject>()
                 .FirstOrDefault(obj => obj.name.Contains("rubber_stopper_with_delivery_tube")); ;
+                if(gameobjA == null) break;
                 gameobjB = GameObject.Find(objBName);
                 trackerA = gameobjA.GetComponent<ConnectionTracker>();
                 trackerB = gameobjB.GetComponent<ConnectionTracker>();
@@ -1079,23 +1147,50 @@ public class ExperimentActionExecutor : MonoBehaviour
                 if (trackerA.connections.Count > trackerB.connections.Count)
                 {
                     reverse = true;
-                    AlignByAnchor_c(objAName, "tube_exit_port", objBName, anchorB, "AlignPositionRotation");
-                    for (int i = 0; i < trackerA.connections.Count; i++)
+                    AlignByAnchor_c(gameobjA.name, "tube_exit_port", objBName, anchorB, "AlignPositionRotation");
+                    string prename = trackerA.gameObject.name;
+                    foreach (var conn in trackerA.connections)
                     {
-                        var conn = trackerA.connections[i];
-                        if (i < trackerA.connections.Count - 1)
+                        if (conn.srcObj != prename)
                         {
-                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation");
+                            reverse = false;
+                            break;
                         }
-                        else
+                    }
+                    if (reverse)
+                    {
+                        for (int i = 0; i < trackerA.connections.Count; i++)
                         {
-                            AlignByAnchor_c(trackerA.gameObject.name, conn.anchorA, conn.connectedObject, conn.anchorB, "AlignPositionRotation", reverse);
+                            var conn = trackerA.connections[i];
+                            if (i < trackerA.connections.Count - 1)
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation");
+                            }
+                            else
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation", reverse, false);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int i = trackerA.connections.Count - 1; i >= 0; i--)
+                        {
+                            var conn = trackerA.connections[i];
+                            if (i < trackerA.connections.Count - 1)
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation");
+                            }
+                            else
+                            {
+                                AlignByAnchor_c(conn.srcObj, conn.anchorA, conn.tgtObj, conn.anchorB, "AlignPositionRotation", reverse, false);
+                            }
                         }
                     }
                 }
                 else
                 {
-                    AlignByAnchor_c(objAName, "tube_exit_port", objBName, anchorB, "AlignPositionRotation");
+                    AlignByAnchor_c(gameobjA.name, "tube_exit_port", objBName, anchorB, "AlignPositionRotation");
                 }
                 break;
         }

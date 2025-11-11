@@ -81,7 +81,7 @@ public class XDLExecutor : MonoBehaviour
         // 获取文件夹下的所有文件路径
         string[] files = Directory.GetFiles(folderPath);
 
-        foreach (var file in files.Skip(7))
+        foreach (var file in files.Skip(1))
         {
             await ProcessJsonFileAsync(file);
             //break; // 只处理第一个文件进行测试
@@ -290,142 +290,114 @@ public class XDLExecutor : MonoBehaviour
 
         if (string.IsNullOrWhiteSpace(xdl_build))
             return;
+        // ✅ 主流程中对 XDL 文件的解析修改部分
         XDocument doc = XDocument.Parse(xdl_build);
-        var stages = doc.Descendants("Stage");
-        List<Dictionary<string, OpInfo>> userOps = new();
-        var hardware = doc.Descendants("Component");
+
+        // ✅ 访问 Synthesis 主节点
+        XElement synthesis = doc.Root?.Element("Synthesis");
+        if (synthesis == null)
+        {
+            Debug.LogError("❌ XDL 文件中缺少 <Synthesis> 节点。");
+            return;
+        }
+
+        // ✅ 获取 Hardware / Reagents / Procedure 节点
+        XElement hardwareSection = synthesis.Element("Hardware");
+        XElement reagentsSection = synthesis.Element("Reagents");
+        XElement procedureSection = synthesis.Element("Procedure");
+
+        if (hardwareSection == null || procedureSection == null)
+        {
+            Debug.LogError("❌ XDL 文件缺少 Hardware 或 Procedure 部分。");
+            return;
+        }
+
+        // ✅ 从 Hardware 部分提取 <Component> 元素
+        var hardware = hardwareSection.Elements("Component");
+
+        // ✅ 摆放初始硬件物体
         try
         {
-            // 定义函数对物体摆放进行初始化
             place_object_begin(hardware);
-            
         }
         catch (Exception ex)
         {
             Debug.LogError($"❌ 初始化错误: {ex.Message}");
             return;
         }
-        foreach (var stage in stages)
-        {
-            // 首先完成场景建造阶段
-            if (stage.Attribute("type")?.Value == "hardware")
-            {
 
-                foreach (var op in stage.Elements())
-                {
-                    string op_text = op.ToString(SaveOptions.DisableFormatting);
-                    string op_file = ToSafeFilename(op);
-                    List<string> end_pic = new();
-                    List<string> begin_pic = new();
-                    // ✅ 存放该操作涉及到的 GameObject 列表
-                    List<GameObject> opObjects = new();
-
-                    // ✅ 依次检查常见字段：vessel, from_vessel, to_vessel, tool, support
-                    foreach (string v in new[] { "vessel", "from_vessel", "to_vessel", "tool", "support" })
-                    {
-                        XAttribute attr = op.Attribute(v);
-                        if (attr != null)
-                        {
-                            string objName = attr.Value;
-                            GameObject go = parentTransform.Find(objName)?.gameObject;
-                            opObjects.Add(go);
-                        }
-                    }
-                    // 对上述两物体进行多角度截图,初始
-                    begin_pic = await mfs.CapturePics(op_file + "_start", opObjects);
-                    try
-                    {
-                        await xDL_Extend.ProcessSingleAction(op); // 根据操作执行场景变化
-                        end_pic = await mfs.CapturePics(op_file + "_end", opObjects);
-                    }
-                    catch
-                    {
-                        Debug.LogWarning($"获取动作序列json错误");
-                        continue;
-                    }
-                    var op1 = new OpInfo
-                    {
-                        OpeningImage = begin_pic,
-                        Steps = op_text,
-                        EndPicture = end_pic
-                    };
-
-                    Dictionary<string, OpInfo> userOp = new();
-                    userOp[op_text] = op1;
-                    userOps.Add(userOp);
-
-                }
-            }
-        }
+        // ✅ 保存初始 Transform 状态
         scene_saver.SaveSceneRootTransforms();
-        foreach (var stage in stages)
+
+        List<Dictionary<string, OpInfo>> userOps = new();
+
+        // ✅ 遍历 Procedure 下的所有操作（直接线性展开）
+        var operations = procedureSection.Elements();
+        foreach (var op in operations)
         {
-            // 接着完成实验操作截图阶段
-            // 执行操作，截图
-            // 恢复场景初始状态
-            // 记录场景中每个物体的初始transform状态,以便后续操作复原
-            if (stage.Attribute("type")?.Value == "operation")
+            //if (op.Name.LocalName == "Wait") continue; // 跳过等待操作
+
+            string op_text = op.ToString(SaveOptions.DisableFormatting);
+            string op_file = ToSafeFilename(op);
+
+            List<string> begin_pic = new();
+            List<string> end_pic = new();
+            List<GameObject> opObjects = new();
+            List<string> fix_list = new List<string>() { "Heat", "Attach", "Insert", "CollectGas" };
+
+            // ✅ 提取参与物体（vessel, from_vessel, to_vessel, tool, support）
+            foreach (string v in new[] { "vessel", "from_vessel", "to_vessel", "tool", "support" })
             {
-                foreach (var op in stage.Elements())
+                XAttribute attr = op.Attribute(v);
+                if (attr != null)
                 {
-
-                    string op_text = op.ToString(SaveOptions.DisableFormatting);
-                    string op_file = ToSafeFilename(op);
-                    List<string> end_pic = new();
-                    List<string> begin_pic = new();
-
-                    // ✅ 存放该操作涉及到的 GameObject 列表
-                    List<GameObject> opObjects = new();
-
-                    // ✅ 依次检查常见字段：vessel, from_vessel, to_vessel, tool, support
-                    foreach (string v in new[] { "vessel", "from_vessel", "to_vessel", "tool", "support" })
-                    {
-                        XAttribute attr = op.Attribute(v);
-                        if (attr != null)
-                        {
-                            string objName = attr.Value;
-                            GameObject go = parentTransform.Find(objName)?.gameObject;
-                            opObjects.Add(go);
-
-                        }
-                    }
-
-                    // 对上述两物体进行多角度截图,初始
-                    begin_pic = await mfs.CapturePics(op_file + "_start", opObjects);
-                    try
-                    {
-                        await xDL_Extend.ProcessSingleAction(op); // 根据操作执行场景变化
-                        end_pic = await mfs.CapturePics(op_file + "_end", opObjects);
-                    }
-                    catch
-                    {
-                        Debug.LogWarning($"获取动作序列json错误");
-                        continue;
-                    }
-                    var op1 = new OpInfo
-                    {
-                        OpeningImage = begin_pic,
-                        Steps = op_text,
-                        EndPicture = end_pic
-                    };
-
-                    Dictionary<string, OpInfo> userOp = new();
-                    userOp[op_text] = op1;
-                    userOps.Add(userOp);
-                    if (op.Name.LocalName == "Heat")
-                    {
-                        scene_saver.SaveSceneRootTransforms(); // 保存加热后状态
-                    }
-                    scene_saver.RestoreSceneRootTransforms(); // 恢复场景初始状态
+                    string objName = attr.Value;
+                    GameObject go = parentTransform.Find(objName)?.gameObject;
+                    if (go != null) opObjects.Add(go);
                 }
             }
+
+            // ✅ 拍摄操作前截图
+            begin_pic = await mfs.CapturePics(op_file + "_start", opObjects);
+
+            try
+            {
+                await xDL_Extend.ProcessSingleAction(op); // 执行操作
+                end_pic = await mfs.CapturePics(op_file + "_end", opObjects);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"⚠️ 执行动作时出错: {e.Message}");
+                continue;
+            }
+
+            // ✅ 记录操作结果
+            var op1 = new OpInfo
+            {
+                OpeningImage = begin_pic,
+                Steps = op_text,
+                EndPicture = end_pic
+            };
+
+            Dictionary<string, OpInfo> userOp = new();
+            userOp[op_text] = op1;
+            userOps.Add(userOp);
+
+            if (fix_list.Contains(op.Name.LocalName))
+            {
+                scene_saver.SaveSceneRootTransforms(); // 保存加热后状态
+            }
+
+            // ✅ 恢复场景
+            scene_saver.RestoreSceneRootTransforms();
         }
+
         Resources.UnloadUnusedAssets();
         GC.Collect();
         await Task.Delay(100);
 
         data.XdlExpriment = xdl_build;
         data.UserOps = userOps;
-        
+
     }
 }

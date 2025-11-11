@@ -4,41 +4,26 @@ Hardware, where virtual vessels and apparatus that the reaction mixture can resi
 
 Reagents, where all reagents that are used in the procedure are declared.  
 
-Procedure, where all experimental actions are defined, is organized into two stages: the first involves hardware manipulation, in which the experimental setup is assembled and secured using actions such as Attach or Assemble; the second involves experimental operations, where chemical or physical actions such as Add, Heat, or Transfer are performed. This structured sequence ensures that the setup is fully constructed before any experimental operations are executed.
+Procedure, here the synthetic actions involved in the procedure are linearly declared.
 
 XDL File Stub:
 <?xml version="1.0" encoding="UTF-8"?>
 <XDL>
-  <Synthesis>
-
-    <Hardware>
-      <!-- Declare all experimental hardware and vessels here -->
-      <!-- Example:
-      <Vessel id="beaker1" type="beaker" volume="250mL"/>
-      -->
-    </Hardware>
-
-    <Reagents>
-      <!-- Declare all reagents used in the procedure here -->
-      <!-- Example:
-      <Reagent id="NaCl" state="solid"/>
-      -->
-    </Reagents>
-
-    <Procedure>
-      <Stage type="hardware">
-        <!-- Hardware manipulation stage -->
-        <!-- Define setup and assembly actions such as Attach or Insert -->
-      </Stage>
-
-      <Stage type="operation">
-        <!-- Experimental operation stage -->
-        <!-- Define chemical or physical actions such as Add, Heat, or Stir -->
-      </Stage>
-    </Procedure>
-
+  <Synthesis>  
+      <Hardware>
+          <!-- ... -->
+      </Hardware>
+  
+      <Reagents>
+          <!-- ... -->
+      </Reagents>
+  
+      <Procedure>
+          <!-- ... -->
+      </Procedure>
   </Synthesis>
 </XDL>
+
 
 
 Hardware:
@@ -75,7 +60,6 @@ Temperature Control: Heat,Cool
 Special: Wait
 Measurement: MeasureTemperature, MeasureMass
 Separation: Filter,CollectGas
-Observation: Observe
 
 XDL Operation Specification (Steps)
 =================================
@@ -180,11 +164,11 @@ Description:
 
 Properties:
     vessel (vessel) - Vessel to be cooled.
-    tool (component, optional) - Cooling apparatus (ice_bath, water_bath, fan).
+    tool (component) - Cooling apparatus (ice_bath, water_bath, fan).
 
 Example:
 
-<Cool vessel="flask_1" tool="ice_bath_1"/>
+<Cool vessel="flask_1"/>
 
 ------------------------------------------------------------
 5. Special
@@ -211,7 +195,6 @@ Description:
 Properties:
     vessel (vessel) - Vessel whose temperature is measured.
     tool (component) - Measuring instrument (thermometer).
-    value (float, optional) - Recorded temperature value (°C).
 
 Example:
 
@@ -227,7 +210,6 @@ Description:
 Properties:
     reagent (reagent) - Reagent to be measured.
     tool (component) - Measuring tool (balance).
-    value (float, optional) - Recorded mass (g).
 
 Example:
 
@@ -266,21 +248,4 @@ Properties:
 Example:
 
 <CollectGas source_vessel="flask_1" method="water_displacement" collector="gas_jar_1"/>
-
-------------------------------------------------------------
-
-8. Observation
-
-8.1 Observe
-
-Description:
-    Observe and record the visible phenomena occurring in the experiment, such as color changes, gas generation, or precipitate formation.
-
-Properties:
-    vessel (vessel) - Vessel where the observation is made.
-    phenomenon (string, optional) - Description of the observed phenomenon (e.g., “color changed to blue”, “bubbles formed”).
-
-Example:
-
-<Observe vessel="flask_1" phenomenon="bubbles formed"/>
 
